@@ -1,0 +1,43 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+erp-lite-backend
+erp_lite_backend
+server
+
+# Frontend dependencies
+node_modules/
+.next/
+out/
+build/
+dist/
+.env
+.env.local
+.env.*.local
+
+# Database files (GORM will recreate these automatically)
+*.db
+*.db-journal
+backend/database.db
+backend/depo.db
+
+# Logs
+*.log
+backend/backend.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+ehthumbs.db
+Icon?
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
