@@ -3,7 +3,7 @@
 ![ERP Lite Banner](https://img.shields.io/badge/ERP--Lite-Modern--Inventory--Management-blue?style=for-the-badge)
 ![Go](https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white)
 ![Next.js](https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
-![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/postgresql-4169e1?style=for-the-badge&logo=postgresql&logoColor=white)
 
 ERP Lite, küçük ve orta ölçekli işletmelerin satınalma, üretim, depo ve satış süreçlerini tek bir merkezden, modern bir arayüz ve akıllı bildirim sistemi ile yönetmelerini sağlayan tam kapsamlı bir kurumsal kaynak planlama çözümüdür.
 
@@ -55,7 +55,7 @@ ERP Lite, küçük ve orta ölçekli işletmelerin satınalma, üretim, depo ve 
 ### Backend
 *   **Dil:** Go (Golang)
 *   **Framework:** Fiber (Yüksek performanslı web framework)
-*   **ORM:** GORM (SQLite desteği ile)
+*   **ORM:** GORM (PostgreSQL desteği ile)
 *   **Bildirim:** SMTP entegrasyonlu özel bildirim servisi
 
 ### Frontend
@@ -66,28 +66,106 @@ ERP Lite, küçük ve orta ölçekli işletmelerin satınalma, üretim, depo ve 
 
 ---
 
-## ⚙️ Kurulum Rehberi
+## ⚙️ Kurulum Rehberi (Adım Adım)
 
-### Gereksinimler
-*   Go (v1.20+)
-*   Node.js (v18+)
-*   NPM veya Yarn
+Uygulamayı hem kendi bilgisayarınıza (localhost) hem de bir sunucuya (örneğin Ubuntu) kurup ağdaki diğer cihazlardan erişime açabilirsiniz.
 
-### 1. Backend Kurulumu
+### 📋 Gereksinimler
+Kuruluma başlamadan önce sunucunuzda/bilgisayarınızda şunların kurulu olduğundan emin olun:
+1.  **PostgreSQL** (Veritabanı için)
+2.  **Go** (v1.20 veya üzeri - Backend için)
+3.  **Node.js** (v18 veya üzeri) ve **npm** (Frontend için)
+4.  **Git** (Projeyi indirmek için)
+
+---
+
+### Adım 1: Projeyi İndirin
+Terminali açın ve projeyi GitHub'dan bilgisayarınıza/sunucunuza indirin:
+```bash
+git clone https://github.com/KULLANICI_ADINIZ/ERP-Lite.git
+cd ERP-Lite
+```
+
+---
+
+### Adım 2: Veritabanı (PostgreSQL) Hazırlığı
+Backend'in çalışabilmesi için PostgreSQL üzerinde bir veritabanı ve kullanıcı oluşturmanız gerekir. (GORM tabloları otomatik oluşturacaktır, sadece boş veritabanı yeterlidir).
+
+**Ubuntu / Linux için PostgreSQL Kurulumu ve Ayarı:**
+```bash
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+
+# PostgreSQL komut satırına girin
+sudo -u postgres psql
+
+# Kullanıcı, şifre ve veritabanı oluşturun (Kendinize göre değiştirebilirsiniz)
+CREATE USER alpertunga WITH PASSWORD 'sifreniz';
+CREATE DATABASE erp_lite OWNER alpertunga;
+GRANT ALL PRIVILEGES ON DATABASE erp_lite TO alpertunga;
+\q
+```
+
+---
+
+### Adım 3: Backend Kurulumu ve Başlatılması
+Backend, veritabanına bağlanıp tüm tabloları ve varsayılan "admin" kullanıcısını otomatik oluşturacaktır.
+
+1. Backend klasörüne girin:
 ```bash
 cd backend
+```
+
+2. Gerekli kütüphaneleri indirin:
+```bash
 go mod tidy
+```
+
+3. **ÖNEMLİ:** Veritabanı bağlantı adresinizi sisteme tanıtın (Bir önceki adımda belirlediğiniz kullanıcı adı, şifre ve db adını kullanın):
+```bash
+export DATABASE_URL="host=localhost user=alpertunga password=sifreniz dbname=erp_lite port=5432 sslmode=disable"
+```
+
+4. Backend'i çalıştırın:
+```bash
 go run main.go
 ```
-*Backend varsayılan olarak `http://localhost:8080` adresinde çalışacaktır.*
+*(Başarılı olursa terminalde "Connected Successfully to Database" ve "Migrations and Seeding completed" mesajlarını göreceksiniz. Backend artık `8080` portunda çalışıyor.)*
 
-### 2. Frontend Kurulumu
+---
+
+### Adım 4: Frontend Kurulumu ve Başlatılması
+Yeni bir terminal sekmesi açın ve proje ana dizinine dönüp frontend klasörüne girin.
+
+1. Klasöre girin:
 ```bash
 cd frontend
+```
+
+2. Bağımlılıkları yükleyin:
+```bash
 npm install
+```
+
+3. Frontend'i çalıştırın:
+```bash
 npm run dev
 ```
-*Frontend varsayılan olarak `http://localhost:3000` adresinde çalışacaktır.*
+
+*(Uygulama `3000` portunda çalışmaya başlayacaktır.)*
+
+---
+
+### 🌐 Ağ (Network) Üzerinden Uygulamaya Erişim
+Frontend kodlarımız **Ağa Duyarlı (Network Aware)** olarak tasarlanmıştır.
+
+*   **Sunucu Üzerinden (Lokal):** Eğer işlemleri yaptığınız makinedeyseniz tarayıcıdan `http://localhost:3000` adresine girin.
+*   **Farklı Bir Cihazdan (Ağ üzerinden):** Eğer uygulamayı bir Ubuntu sunucuya (örneğin IP: 192.168.1.100) kurduysanız, ofisteki herhangi bir telefon veya bilgisayarın tarayıcısına `http://192.168.1.100:3000` yazarak sisteme girebilirsiniz. Uygulama otomatik olarak o IP adresi üzerinden Backend ile iletişim kuracaktır.
+
+**Varsayılan Giriş Bilgileri:**
+*   **Kullanıcı Adı:** `admin`
+*   **Şifre:** `admin123`
+*(Sisteme girdikten sonra lütfen şifrenizi değiştirin.)*
 
 ---
 
