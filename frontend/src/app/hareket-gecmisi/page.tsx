@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function HareketGecmisi() {
   const [movements, setMovements] = useState<any[]>([]);

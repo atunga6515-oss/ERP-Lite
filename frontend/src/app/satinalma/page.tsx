@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Truck, Plus, Trash2, Package, CheckCircle, ShoppingBag, Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function Satinalma() {
   const router = useRouter();

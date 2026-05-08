@@ -13,7 +13,7 @@ import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function IsEmirleri() {
   const [workOrders, setWorkOrders] = useState<any[]>([]);

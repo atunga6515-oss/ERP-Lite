@@ -21,7 +21,8 @@ export default function LoginPage() {
     const email = prompt("Kayıtlı e-posta adresinizi girin:");
     if (!email) return;
     try {
-      const res = await axios.post("http://localhost:8080/api/auth/forgot-password", { email });
+      const baseURL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
+      const res = await axios.post(`${baseURL}/auth/forgot-password`, { email });
       setInfo(res.data.message);
       setError("");
     } catch {
@@ -35,7 +36,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await axios.post("http://localhost:8080/api/auth/login", {
+      const baseURL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
+      const res = await axios.post(`${baseURL}/auth/login`, {
         username,
         password
       });

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function StokListesi() {
   const [stocks, setStocks] = useState<any[]>([]);

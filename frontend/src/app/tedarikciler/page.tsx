@@ -12,7 +12,7 @@ import { Truck, Plus, Edit2, Trash2, Mail, Phone, MapPin, UserCheck, UserPlus, F
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function Tedarikciler() {
   const [suppliers, setSuppliers] = useState<any[]>([]);

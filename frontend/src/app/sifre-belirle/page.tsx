@@ -42,7 +42,8 @@ export default function SifreBelirle() {
 
     setLoading(true);
     try {
-      await axios.post("http://localhost:8080/api/auth/reset-password", {
+      const baseURL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
+      await axios.post(`${baseURL}/auth/reset-password`, {
         token,
         password
       });

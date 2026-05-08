@@ -13,7 +13,7 @@ import { format, startOfDay, endOfDay } from "date-fns";
 import { tr } from "date-fns/locale";
 import { FileSpreadsheet } from "lucide-react";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function Raporlama() {
   const [activeTab, setActiveTab] = useState<"stok" | "hareket" | "satinalma">("hareket");

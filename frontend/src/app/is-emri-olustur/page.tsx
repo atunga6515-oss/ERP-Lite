@@ -10,7 +10,7 @@ import { Hammer, ClipboardList, AlertTriangle, ArrowLeft, CheckCircle, PackageSe
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function IsEmriOlustur() {
   const router = useRouter();

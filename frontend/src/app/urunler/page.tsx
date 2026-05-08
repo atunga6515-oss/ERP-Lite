@@ -13,7 +13,7 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { Upload, Edit, Trash2, Download } from "lucide-react";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function Urunler() {
   const [products, setProducts] = useState<any[]>([]);

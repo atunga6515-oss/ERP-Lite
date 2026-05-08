@@ -11,7 +11,7 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import Link from "next/link";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function Teklifler() {
   const [quotes, setQuotes] = useState<any[]>([]);
