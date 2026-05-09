@@ -82,7 +82,7 @@ Kuruluma başlamadan önce sunucunuzda/bilgisayarınızda şunların kurulu oldu
 ### Adım 1: Projeyi İndirin
 Terminali açın ve projeyi GitHub'dan bilgisayarınıza/sunucunuza indirin:
 ```bash
-git clone https://github.com/KULLANICI_ADINIZ/ERP-Lite.git
+git clone https://github.com/atunga6515-oss/ERP-Lite.git
 cd ERP-Lite
 ```
 
@@ -100,9 +100,9 @@ sudo apt install postgresql postgresql-contrib
 sudo -u postgres psql
 
 # Kullanıcı, şifre ve veritabanı oluşturun (Kendinize göre değiştirebilirsiniz)
-CREATE USER alpertunga WITH PASSWORD 'sifreniz';
-CREATE DATABASE erp_lite OWNER alpertunga;
-GRANT ALL PRIVILEGES ON DATABASE erp_lite TO alpertunga;
+CREATE USER erplite WITH PASSWORD 'sifreniz';
+CREATE DATABASE erp_lite OWNER erplite;
+GRANT ALL PRIVILEGES ON DATABASE erp_lite TO erplite;
 \q
 ```
 
@@ -123,7 +123,7 @@ go mod tidy
 
 3. **ÖNEMLİ:** Veritabanı bağlantı adresinizi sisteme tanıtın (Bir önceki adımda belirlediğiniz kullanıcı adı, şifre ve db adını kullanın):
 ```bash
-export DATABASE_URL="host=localhost user=alpertunga password=sifreniz dbname=erp_lite port=5432 sslmode=disable"
+export DATABASE_URL="host=localhost user=erplite password=sifreniz dbname=erp_lite port=5432 sslmode=disable"
 ```
 
 4. Backend'i çalıştırın:
