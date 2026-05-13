@@ -132,6 +132,7 @@ export function Sidebar() {
                 <div className="flex flex-col gap-0.5 mt-0.5">
                   <SubLink href="/stok-listesi" label="Mevcut Stoklar" icon={Warehouse} />
                   <SubLink href="/mal-kabul" label="Mal Kabul Masası" icon={Truck} />
+                  <SubLink href="/sevkiyat" label="Sevkiyat Masası" icon={Truck} />
                   <SubLink href="/stok-islemleri" label="Stok İşlemleri" icon={ArrowRightLeft} />
                   <SubLink href="/hareket-gecmisi" label="Hareket Geçmişi" icon={History} />
                 </div>
@@ -170,6 +171,7 @@ export function Sidebar() {
                   <SubLink href="/receteler" label="Ürün Reçeteleri" icon={BookOpen} />
                   <SubLink href="/musteriler" label="Müşteri Yönetimi" icon={Users} />
                   <SubLink href="/tedarikciler" label="Tedarikçi Yönetimi" icon={Truck} />
+                  <SubLink href="/teklif-veren-sirketler" label="Teklif Veren Şirketler" icon={ShoppingBag} />
                   <SubLink href="/depolar" label="Depo Tanımları" icon={Warehouse} />
                 </div>
               )}
@@ -199,7 +201,7 @@ export function Sidebar() {
         )}
         <div className="mt-2 px-3 flex justify-between items-center opacity-40">
           <span className="text-[9px] font-black tracking-[0.2em]">ERP LITE</span>
-          <span className="text-[9px] font-bold">v1.2.0</span>
+          <span className="text-[9px] font-bold">v1.3.0</span>
         </div>
       </div>
 

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strconv"
 	"log"
+	"time"
+	"os"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -245,6 +247,7 @@ func GetRecipeByProduct(c *fiber.Ctx) error {
 func CreateOrUpdateRecipe(c *fiber.Ctx) error {
 	var payload struct {
 		ProductID uint `json:"product_id"`
+		ImagePath string `json:"image_path"`
 		Items []struct {
 			ProductID uint `json:"product_id"`
 			Quantity float64 `json:"quantity"`
@@ -256,8 +259,11 @@ func CreateOrUpdateRecipe(c *fiber.Ctx) error {
 
 	var recipe models.Recipe
 	if err := database.DB.Where("product_id = ?", payload.ProductID).First(&recipe).Error; err != nil {
-		recipe = models.Recipe{ProductID: payload.ProductID}
+		recipe = models.Recipe{ProductID: payload.ProductID, ImagePath: payload.ImagePath}
 		database.DB.Create(&recipe)
+	} else {
+		recipe.ImagePath = payload.ImagePath
+		database.DB.Save(&recipe)
 	}
 
 	// Delete old items
@@ -410,6 +416,14 @@ func GetSales(c *fiber.Ctx) error {
 	var sales []models.Sale
 	database.DB.Preload("Customer").Preload("Items.Product").Preload("Items.Warehouse").Order("created_at desc").Find(&sales)
 	return c.JSON(sales)
+}
+
+func ShipSale(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	if err := services.ShipSale(uint(id), 1); err != nil { // Default user ID 1 for now
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "Shipment completed and stock deducted"})
 }
 
 func CancelSale(c *fiber.Ctx) error {
@@ -692,7 +706,7 @@ func GetWorkOrderRequirements(c *fiber.Ctx) error {
 // Quotes
 func GetQuotes(c *fiber.Ctx) error {
 	var quotes []models.Quote
-	database.DB.Preload("Customer").Preload("Items.Product").Order("created_at desc").Find(&quotes)
+	database.DB.Preload("Customer").Preload("IssuingCompany").Preload("Items.Product").Order("created_at desc").Find(&quotes)
 	return c.JSON(quotes)
 }
 
@@ -701,6 +715,15 @@ func CreateQuote(c *fiber.Ctx) error {
 	if err := c.BodyParser(&quote); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid body"})
 	}
+
+	// Generate Quote Number (TF-YEAR-ID)
+	var lastQuote models.Quote
+	database.DB.Order("id desc").First(&lastQuote)
+	year := time.Now().Year()
+	nextID := lastQuote.ID + 1
+	quote.QuoteNumber = fmt.Sprintf("TF-%d-%03d", year, nextID)
+	quote.QuoteDate = time.Now()
+
 	if err := database.DB.Create(&quote).Error; err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -716,6 +739,48 @@ func CreateQuote(c *fiber.Ctx) error {
 		"PLANLAMA_NOTU": quote.Note,
 	})
 
+	return c.JSON(quote)
+}
+
+func UpdateQuote(c *fiber.Ctx) error {
+	id := c.Params("id")
+	var existingQuote models.Quote
+	if err := database.DB.First(&existingQuote, id).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Quote not found"})
+	}
+
+	var updateData models.Quote
+	if err := c.BodyParser(&updateData); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid body"})
+	}
+
+	// Delete old items
+	database.DB.Where("quote_id = ?", id).Delete(&models.QuoteItem{})
+
+	// Update main fields
+	existingQuote.CustomerID = updateData.CustomerID
+	existingQuote.ValidUntil = updateData.ValidUntil
+	existingQuote.SubTotal = updateData.SubTotal
+	existingQuote.TaxTotal = updateData.TaxTotal
+	existingQuote.TotalPrice = updateData.TotalPrice
+	existingQuote.Note = updateData.Note
+	existingQuote.Currency = updateData.Currency
+	existingQuote.IssuingCompanyID = updateData.IssuingCompanyID
+	existingQuote.Items = updateData.Items
+
+	if err := database.DB.Save(&existingQuote).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(existingQuote)
+}
+
+func GetQuote(c *fiber.Ctx) error {
+	id := c.Params("id")
+	var quote models.Quote
+	if err := database.DB.Preload("Customer").Preload("IssuingCompany").Preload("Items.Product").First(&quote, id).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Quote not found"})
+	}
 	return c.JSON(quote)
 }
 
@@ -758,4 +823,59 @@ func ConvertQuoteToSale(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"message": "Quote converted to sale successfully"})
+}
+
+func GetIssuingCompanies(c *fiber.Ctx) error {
+	var companies []models.IssuingCompany
+	database.DB.Find(&companies)
+	return c.JSON(companies)
+}
+
+func CreateIssuingCompany(c *fiber.Ctx) error {
+	var company models.IssuingCompany
+	if err := c.BodyParser(&company); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
+	}
+	database.DB.Create(&company)
+	return c.JSON(company)
+}
+
+func UpdateIssuingCompany(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	var company models.IssuingCompany
+	if err := database.DB.First(&company, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Company not found"})
+	}
+	if err := c.BodyParser(&company); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid body"})
+	}
+	database.DB.Save(&company)
+	return c.JSON(company)
+}
+
+func DeleteIssuingCompany(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	database.DB.Delete(&models.IssuingCompany{}, id)
+	return c.JSON(fiber.Map{"message": "Company deleted"})
+}
+
+func UploadImage(c *fiber.Ctx) error {
+	file, err := c.FormFile("image")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Resim yüklenemedi"})
+	}
+
+	// Create uploads directory if not exists
+	if _, err := os.Stat("uploads"); os.IsNotExist(err) {
+		os.Mkdir("uploads", 0755)
+	}
+
+	filename := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
+	path := fmt.Sprintf("uploads/%s", filename)
+
+	if err := c.SaveFile(file, path); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Dosya kaydedilemedi"})
+	}
+
+	return c.JSON(fiber.Map{"path": path})
 }

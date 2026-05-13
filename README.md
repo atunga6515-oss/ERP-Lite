@@ -10,8 +10,9 @@ ERP Lite, küçük ve orta ölçekli işletmelerin satınalma, üretim, depo ve 
 ## 🚀 Öne Çıkan Özellikler
 
 *   **Akıllı Bildirim Motoru:** Kritik stok seviyeleri, yeni iş emirleri veya satışlar gerçekleştiğinde özelleştirilebilir HTML şablonları ile otomatik e-posta bilgilendirmesi.
+*   **Profesyonel Teklif Sistemi (v1.3.0):** USD, EUR ve TL para birimleri ile teklif hazırlama, şirket logolu ve Türkçe karakter destekli PDF dışa aktarma.
 *   **Dinamik Üretim Planlama:** Reçete (BOM) yönetimi, hammadde ihtiyaç analizi ve otomatik stok sarfiyatı ile iş emri takibi.
-*   **Satış ve Sevkiyat Masası:** Atomik işlem yapısı ile satış sırasında stoklardan otomatik düşüş ve satış iptalinde stokların iadesi.
+*   **Satış ve Sevkiyat Masası:** Tekliflerin tek tıkla satışa dönüştürülmesi ve sevkiyat masası üzerinden depo stok kontrolü ile kontrollü çıkış.
 *   **Profesyonel Satınalma Akışı:** Sipariş hazırlama, tedarikçi yönetimi ve kademeli mal kabul (depoya giriş) süreçleri.
 *   **Gelişmiş Arama:** Türkçe karakter duyarlı (İ-i, I-ı) hızlı arama ve filtreleme özellikleri.
 *   **Veri Yönetimi:** Excel/CSV ile toplu ürün ve müşteri içe/dışa aktarma desteği.
@@ -30,13 +31,15 @@ ERP Lite, küçük ve orta ölçekli işletmelerin satınalma, üretim, depo ve 
 *   İş emri oluşturma sırasında hammadde yeterlilik analizi.
 *   Üretime başlama ve tamamlama süreçlerinin takibi.
 
-### 💰 Satış ve Satınalma
-*   **Satış:** Müşteri bazlı satış, sepet yönetimi ve anlık stok düşümü.
+### 💰 Satış, Satınalma ve Teklif Yönetimi
+*   **Teklif Yönetimi (v1.3.0):** USD/EUR/TL bazlı profesyonel teklif hazırlama, PDF çıktısı ve tek tıkla satışa dönüştürme.
+*   **Satış:** Müşteri bazlı satış, sepet yönetimi ve sevkiyat masası entegrasyonu.
 *   **Satınalma:** Tedarikçiden sipariş geçme ve depo girişlerinin kontrolü.
 
 ### ⚙️ Yönetim Paneli (Admin)
-*   Bildirim kuralları oluşturma (Hangi olayda kime mail gidecek?).
-*   Sürükle-bırak veya HTML şablon düzenleyici ile mail içeriklerini yönetme.
+*   **Teklif Veren Şirketler (v1.3.0):** Teklif formlarında görünecek farklı şirket profillerini ve logolarını yönetme.
+*   **Bildirim Kuralları:** Kritik stok seviyesi veya yeni siparişlerde otomatik e-posta gönderimi.
+*   **Kullanıcı Yetkilendirme:** Modül bazlı erişim kontrolü.
 
 ---
 

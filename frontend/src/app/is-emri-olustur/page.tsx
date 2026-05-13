@@ -42,7 +42,6 @@ export default function IsEmriOlustur() {
         const allRecipes = rRes.data || [];
         
         const producibleProducts = allProducts.filter((p: any) => 
-          p.barcode.startsWith("ALP") && 
           allRecipes.some((r: any) => r.product_id === p.id)
         );
         
@@ -129,7 +128,7 @@ export default function IsEmriOlustur() {
         </Card>
       )}
 
-      <Card className="border-t-4 border-t-purple-600 shadow-xl">
+      <Card className="border-t-4 border-t-purple-600 shadow-xl !overflow-visible">
         <CardHeader className="bg-slate-50 border-b">
           <CardTitle className="text-lg flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -140,7 +139,7 @@ export default function IsEmriOlustur() {
             </span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-8 px-8 pb-10">
+        <CardContent className="pt-8 px-8 pb-10 !overflow-visible">
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Ürün Seçimi */}
             <div className="space-y-2 relative">
@@ -169,7 +168,7 @@ export default function IsEmriOlustur() {
                       className="h-10 border-slate-300 focus:ring-purple-600"
                     />
                   </div>
-                  <div className="max-h-[400px] overflow-y-auto p-2 grid grid-cols-1 md:grid-cols-2 gap-2 bg-slate-50/50">
+                  <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
                     {products
                       .filter(p => 
                         p.name.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) || 
@@ -178,10 +177,10 @@ export default function IsEmriOlustur() {
                       .map(p => (
                         <div 
                           key={p.id}
-                          className={`flex flex-col p-3 border rounded-xl transition-all cursor-pointer group hover:shadow-md ${
+                          className={`flex items-center justify-between p-3 border-b border-slate-50 transition-all cursor-pointer group hover:bg-purple-50/50 ${
                             String(p.id) === selectedProductId 
-                            ? 'bg-purple-600 border-purple-600 text-white shadow-purple-100' 
-                            : 'bg-white border-slate-200 hover:border-purple-400'
+                            ? 'bg-purple-50 border-l-4 border-l-purple-600' 
+                            : 'bg-white border-l-4 border-l-transparent'
                           }`}
                           onClick={() => {
                             setSelectedProductId(String(p.id));
@@ -189,13 +188,18 @@ export default function IsEmriOlustur() {
                             setSearchTerm("");
                           }}
                         >
-                          <div className="flex justify-between items-start mb-1">
-                            <span className={`text-[10px] font-mono ${String(p.id) === selectedProductId ? 'text-purple-100' : 'text-slate-400'}`}>
-                              {p.barcode}
-                            </span>
-                            {String(p.id) === selectedProductId && <CheckCircle className="w-3 h-3 text-white" />}
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-bold`}>
+                                {p.barcode}
+                              </span>
+                              <span className="font-bold text-sm text-slate-800">{p.name}</span>
+                            </div>
+                            <span className="text-[11px] text-slate-400 italic">{p.category || "Kategori belirtilmemiş"}</span>
                           </div>
-                          <span className="font-bold text-xs leading-tight line-clamp-2">{p.name}</span>
+                          <div className="text-right">
+                            {String(p.id) === selectedProductId && <CheckCircle className="w-5 h-5 text-purple-600" />}
+                          </div>
                         </div>
                       ))
                     }
@@ -203,7 +207,7 @@ export default function IsEmriOlustur() {
                         p.name.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) || 
                         p.barcode.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR'))
                       ).length === 0 && (
-                      <div className="col-span-full p-12 text-center text-slate-400 text-sm">
+                      <div className="p-12 text-center text-slate-400 text-sm">
                         <PackageSearch className="w-8 h-8 mx-auto mb-2 opacity-20" />
                         Ürün bulunamadı.
                       </div>

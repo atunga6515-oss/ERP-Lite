@@ -5,7 +5,7 @@ import axios from "axios";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, AlertTriangle, Activity, ArrowUpDown, ArrowUp, ArrowDown, ShoppingBag, Send, Clock, Hammer, PlayCircle, CheckCircle2 } from "lucide-react";
+import { Package, AlertTriangle, Activity, ArrowUpDown, ArrowUp, ArrowDown, ShoppingBag, Send, Clock, Hammer, PlayCircle, CheckCircle2, Truck } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,24 +18,27 @@ export default function Dashboard() {
   const [movements, setMovements] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
   const [workOrders, setWorkOrders] = useState<any[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [criticalSortConfig, setCriticalSortConfig] = useState<{ key: string, direction: "asc" | "desc" } | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [prodRes, stockRes, movRes, purRes, woRes] = await Promise.all([
+        const [prodRes, stockRes, movRes, purRes, woRes, saleRes] = await Promise.all([
           axios.get(`${API_URL}/products`),
           axios.get(`${API_URL}/stocks`),
           axios.get(`${API_URL}/movements`),
           axios.get(`${API_URL}/purchases`),
           axios.get(`${API_URL}/work-orders`),
+          axios.get(`${API_URL}/sales`),
         ]);
         setProducts(prodRes.data || []);
         setStocks(stockRes.data || []);
         setMovements(movRes.data || []);
         setPurchases(purRes.data || []);
         setWorkOrders(woRes.data || []);
+        setSales(saleRes.data || []);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -187,13 +190,21 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={sales.filter(s => s.status === 'Hazırlanıyor').length > 0 ? 'border-blue-200 bg-blue-50/30' : ''}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Son Hareketler</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Sevkiyat Masası</CardTitle>
+            <Truck className="h-4 w-4 text-blue-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{movements.length > 0 ? movements.length : 0}</div>
+          <CardContent className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 text-slate-500"><Clock className="w-3 h-3" /> Hazırlanıyor</span>
+              <span className="font-black text-slate-700">{sales.filter(s => s.status === 'Hazırlanıyor').length}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs mt-2 pt-2 border-t border-blue-100">
+              <span className="flex items-center gap-1.5 text-blue-600 font-bold underline">
+                <Link href="/sevkiyat">Sevkiyata Git →</Link>
+              </span>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -309,12 +320,54 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      {/* Bekleyen Sevkiyatlar Tablosu */}
+      {sales.filter(s => s.status === 'Hazırlanıyor').length > 0 && (
+        <Card className="border-t-4 border-t-blue-600">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-blue-800 uppercase font-black tracking-tight">
+              <Truck className="w-6 h-6" /> Bekleyen Sevkiyat Masası
+            </CardTitle>
+            <Link href="/sevkiyat" className="text-xs bg-blue-600 text-white px-3 py-1 rounded-full font-bold hover:bg-blue-700 transition-colors">YÖNETİM PANELİNE GİT</Link>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50">
+                  <TableHead className="font-bold">Sipariş No</TableHead>
+                  <TableHead className="font-bold">Müşteri</TableHead>
+                  <TableHead className="font-bold">Kayıt Tarihi</TableHead>
+                  <TableHead className="font-bold">Ürün Sayısı</TableHead>
+                  <TableHead className="text-right font-bold">Toplam Tutar</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sales.filter(s => s.status === 'Hazırlanıyor').map((s: any) => (
+                  <TableRow key={s.id} className="hover:bg-blue-50/50 group">
+                    <TableCell className="font-mono font-bold text-slate-500">#SAL-{s.id.toString().padStart(5, '0')}</TableCell>
+                    <TableCell className="font-black text-slate-800">{s.customer?.name || '-'}</TableCell>
+                    <TableCell className="text-sm text-slate-500">
+                      {s.created_at ? format(new Date(s.created_at), 'dd MMM yyyy HH:mm', { locale: tr }) : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="border-blue-200 text-blue-700 bg-blue-50">
+                        {s.items?.length || 0} Kalem Ürün
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-black text-blue-900">{s.total_price?.toLocaleString('tr-TR')} ₺</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Bekleyen Satınalma Siparişleri */}
       {purchases.filter(p => p.status === 'Hazırlanıyor' || p.status === 'Sipariş Verildi').length > 0 && (
         <Card className="border-t-4 border-t-orange-500">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-orange-700">
-              <ShoppingBag className="w-5 h-5" /> Bekleyen Satınalma Siparişleri
+            <CardTitle className="flex items-center gap-2 text-orange-700 uppercase font-black tracking-tight">
+              <ShoppingBag className="w-6 h-6" /> Bekleyen Satınalma Siparişleri
             </CardTitle>
             <Link href="/satinalma-listesi" className="text-xs text-blue-600 hover:underline font-bold">Tümünü Gör →</Link>
           </CardHeader>
@@ -322,11 +375,11 @@ export default function Dashboard() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50">
-                  <TableHead>Sipariş No</TableHead>
-                  <TableHead>Tedarikçi</TableHead>
-                  <TableHead>Tarih</TableHead>
-                  <TableHead>Durum</TableHead>
-                  <TableHead className="text-right">Tutar</TableHead>
+                  <TableHead className="font-bold">Sipariş No</TableHead>
+                  <TableHead className="font-bold">Tedarikçi</TableHead>
+                  <TableHead className="font-bold">Tarih</TableHead>
+                  <TableHead className="font-bold">Durum</TableHead>
+                  <TableHead className="text-right font-bold">Tutar</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -334,7 +387,7 @@ export default function Dashboard() {
                   <TableRow key={p.id} className="hover:bg-orange-50/50">
                     <TableCell className="font-mono font-bold text-slate-500">PO-{p.id.toString().padStart(5, '0')}</TableCell>
                     <TableCell className="font-semibold text-blue-700">{p.supplier?.name || '-'}</TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-sm text-slate-500">
                       {p.purchase_date ? format(new Date(p.purchase_date), 'dd MMM yyyy', { locale: tr }) : '-'}
                     </TableCell>
                     <TableCell>

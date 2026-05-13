@@ -165,6 +165,7 @@ type Recipe struct {
 	ProductID uint         `gorm:"uniqueIndex" json:"product_id"`
 	Product   Product      `gorm:"foreignKey:ProductID" json:"product"`
 	Items     []RecipeItem `gorm:"foreignKey:RecipeID;constraint:OnDelete:CASCADE;" json:"items"`
+	ImagePath string       `json:"image_path"`
 	CreatedAt time.Time    `json:"created_at"`
 	UpdatedAt time.Time    `json:"updated_at"`
 }
@@ -197,9 +198,11 @@ type Sale struct {
 	SaleDate    time.Time  `gorm:"not null" json:"sale_date"`
 	Note        string     `json:"note"`
 	TotalPrice  float64    `gorm:"not null" json:"total_price"`
+	Status      string     `gorm:"default:'Hazırlanıyor'" json:"status"` // Hazırlanıyor, Sevk Edildi, İptal
 	UserID      uint       `gorm:"index" json:"user_id"`
 	Items       []SaleItem `gorm:"foreignKey:SaleID" json:"items"`
 	CreatedAt   time.Time  `json:"created_at"`
+	ShippedAt   *time.Time `json:"shipped_at"`
 }
 
 type SaleItem struct {
@@ -214,18 +217,36 @@ type SaleItem struct {
 	TotalPrice  float64   `gorm:"not null" json:"total_price"`
 }
 
+type IssuingCompany struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Name      string    `gorm:"not null" json:"name"`
+	Address   string    `json:"address"`
+	Phone     string    `json:"phone"`
+	Email     string    `json:"email"`
+	Web       string    `json:"web"`
+	LogoPath  string    `json:"logo_path"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type Quote struct {
-	ID         uint        `gorm:"primaryKey" json:"id"`
-	CustomerID uint        `gorm:"index" json:"customer_id"`
-	Customer   Customer    `gorm:"foreignKey:CustomerID" json:"customer"`
-	QuoteDate  time.Time   `json:"quote_date"`
-	ValidUntil time.Time   `json:"valid_until"` // Geçerlilik tarihi
-	TotalPrice float64     `json:"total_price"`
-	Status     string      `gorm:"default:'Beklemede'" json:"status"` // Beklemede, Gönderildi, Onaylandı, Reddedildi, Satışa Döndü
-	Note       string      `json:"note"`
-	Items      []QuoteItem `gorm:"foreignKey:QuoteID;constraint:OnDelete:CASCADE;" json:"items"`
-	CreatedAt  time.Time   `json:"created_at"`
-	UpdatedAt  time.Time   `json:"updated_at"`
+	ID               uint           `gorm:"primaryKey" json:"id"`
+	QuoteNumber      string         `gorm:"uniqueIndex" json:"quote_number"` // Örn: TF-2025-001
+	CustomerID       uint           `gorm:"index" json:"customer_id"`
+	Customer         Customer       `gorm:"foreignKey:CustomerID" json:"customer"`
+	IssuingCompanyID *uint          `gorm:"index" json:"issuing_company_id"`
+	IssuingCompany   *IssuingCompany `gorm:"foreignKey:IssuingCompanyID" json:"issuing_company"`
+	QuoteDate        time.Time      `json:"quote_date"`
+	ValidUntil       time.Time      `json:"valid_until"` // Geçerlilik tarihi
+	SubTotal         float64        `json:"sub_total"`   // KDV hariç toplam
+	TaxTotal         float64        `json:"tax_total"`   // Toplam KDV
+	TotalPrice       float64        `json:"total_price"` // KDV dahil genel toplam
+	Status           string         `gorm:"default:'Beklemede'" json:"status"` // Beklemede, Gönderildi, Onaylandı, Reddedildi, Satışa Döndü
+	Note             string         `json:"note"`
+	Currency         string         `gorm:"default:'TL'" json:"currency"` // TL, USD, EUR
+	Items            []QuoteItem    `gorm:"foreignKey:QuoteID;constraint:OnDelete:CASCADE;" json:"items"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
 }
 
 type QuoteItem struct {
@@ -235,7 +256,9 @@ type QuoteItem struct {
 	Product    Product `gorm:"foreignKey:ProductID" json:"product"`
 	Quantity   float64 `json:"quantity"`
 	UnitPrice  float64 `json:"unit_price"`
-	TotalPrice float64 `json:"total_price"`
+	TaxRate    float64 `json:"tax_rate"`   // Örn: 20
+	TaxAmount  float64 `json:"tax_amount"` // Satır KDV tutarı
+	TotalPrice float64 `json:"total_price"` // Satır toplamı (KDV dahil)
 }
 
 type NotificationRule struct {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
-  Plus, Trash2, ClipboardList, Send, ArrowLeft, 
-  UserPlus, Package, Search, CheckCircle, Calendar, Coins,
-  FileText, Info, AlertCircle, Percent, Building2
+  Trash2, Send, ArrowLeft, 
+  UserPlus, Package, Search, CheckCircle, Calendar,
+  FileText, Percent, Save, Plus, AlertCircle, Coins, Building2
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,8 +19,11 @@ import { Badge } from "@/components/ui/badge";
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 const UPLOAD_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080` : "http://localhost:8080";
 
-export default function TeklifOlustur() {
+export default function TeklifDuzenle({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const id = resolvedParams.id;
   const router = useRouter();
+  
   const [customers, setCustomers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [stocks, setStocks] = useState<any[]>([]);
@@ -33,50 +36,56 @@ export default function TeklifOlustur() {
   const [note, setNote] = useState("");
   const [currency, setCurrency] = useState("TL");
   const [validUntil, setValidUntil] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [openSearchIdx, setOpenSearchIdx] = useState<number | null>(null);
 
   useEffect(() => {
+    if (!id) return;
+    
     const fetchData = async () => {
+      setError(null);
       try {
-        const [cRes, pRes, sRes, rRes, iRes] = await Promise.all([
+        const [cRes, pRes, qRes, sRes, rRes, iRes] = await Promise.all([
           axios.get(`${API_URL}/customers`),
           axios.get(`${API_URL}/products`),
+          axios.get(`${API_URL}/quotes/${id}`),
           axios.get(`${API_URL}/stocks`),
           axios.get(`${API_URL}/recipes`),
           axios.get(`${API_URL}/issuing-companies`)
         ]);
+        
         setCustomers(cRes.data || []);
         setProducts(pRes.data || []);
         setStocks(sRes.data || []);
         setRecipes(rRes.data || []);
         setIssuingCompanies(iRes.data || []);
-
-        if (iRes.data && iRes.data.length > 0) {
-            setSelectedIssuingCompanyId(String(iRes.data[0].id));
-        }
         
-        const date = new Date();
-        date.setDate(date.getDate() + 30);
-        setValidUntil(date.toISOString().split('T')[0]);
-      } catch (err) {
+        const quote = qRes.data;
+        setSelectedCustomerId(String(quote.customer_id));
+        setSelectedIssuingCompanyId(quote.issuing_company_id ? String(quote.issuing_company_id) : "");
+        setNote(quote.note || "");
+        setCurrency(quote.currency || "TL");
+        setValidUntil(quote.valid_until.split('T')[0]);
+        setItems(quote.items.map((item: any) => ({
+            ...item,
+            product_id: String(item.product_id)
+        })));
+        
+      } catch (err: any) {
         console.error(err);
+        setError(err.response?.data?.error || "Teklif verileri çekilemedi. Lütfen bağlantınızı kontrol edin.");
+      } finally {
+        setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [id]);
 
   const addItem = () => {
     setItems([...items, { product_id: "", quantity: 1, unit_price: 0, tax_rate: 20, tax_amount: 0, total_price: 0 }]);
-  };
-
-  const getCurrencySymbol = (code: string) => {
-    switch (code) {
-      case "USD": return "$";
-      case "EUR": return "€";
-      default: return "₺";
-    }
   };
 
   const updateItem = (index: number, field: string, value: any) => {
@@ -113,6 +122,14 @@ export default function TeklifOlustur() {
     return acc;
   }, { subTotal: 0, taxTotal: 0, grandTotal: 0 });
 
+  const getCurrencySymbol = (code: string) => {
+    switch (code) {
+      case "USD": return "$";
+      case "EUR": return "€";
+      default: return "₺";
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCustomerId || items.length === 0) {
@@ -120,7 +137,7 @@ export default function TeklifOlustur() {
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
     try {
       const payload = {
         customer_id: Number(selectedCustomerId),
@@ -131,7 +148,6 @@ export default function TeklifOlustur() {
         total_price: totals.grandTotal,
         note: note,
         currency: currency,
-        status: "Beklemede",
         items: items.map(item => ({
           product_id: Number(item.product_id),
           quantity: Number(item.quantity),
@@ -142,18 +158,41 @@ export default function TeklifOlustur() {
         }))
       };
 
-      await axios.post(`${API_URL}/quotes`, payload);
+      await axios.put(`${API_URL}/quotes/${id}`, payload);
+      alert("Teklif başarıyla güncellendi.");
       router.push("/teklifler");
     } catch (err: any) {
-      alert(err.response?.data?.error || "Teklif oluşturulurken hata oluştu.");
+      alert(err.response?.data?.error || "Teklif güncellenirken hata oluştu.");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
+  if (loading) return <div className="p-20 text-center animate-pulse font-black uppercase tracking-widest text-slate-400">Veriler Yükleniyor...</div>;
+
+  if (error) return (
+    <div className="max-w-xl mx-auto mt-20 p-8 bg-white rounded-[2rem] shadow-2xl border border-red-100 text-center space-y-6">
+      <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto">
+        <AlertCircle className="w-8 h-8 text-red-600" />
+      </div>
+      <div className="space-y-2">
+        <h2 className="text-xl font-black text-slate-900">Bir Hata Oluştu</h2>
+        <p className="text-slate-500 font-medium">{error}</p>
+      </div>
+      <Button 
+        onClick={() => window.location.reload()}
+        className="w-full bg-slate-900 text-white rounded-xl h-12 font-bold"
+      >
+        Tekrar Dene
+      </Button>
+      <Link href="/teklifler" className="block text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors">
+        Listeye Geri Dön
+      </Link>
+    </div>
+  );
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-32 animate-in fade-in duration-500">
-      {/* Header Section */}
+    <div className="max-w-6xl mx-auto space-y-8 pb-32">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/40 backdrop-blur-md p-6 rounded-3xl border border-white shadow-xl">
         <div className="flex items-center gap-5">
           <Link href="/teklifler">
@@ -163,35 +202,25 @@ export default function TeklifOlustur() {
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <Badge className="bg-orange-100 text-orange-600 hover:bg-orange-100 border-orange-200 uppercase tracking-tighter text-[10px] font-black px-2 py-0.5">YENİ TASLAK</Badge>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Profesyonel Teklif Hazırla</h1>
+              <Badge className="bg-blue-100 text-blue-600 hover:bg-blue-100 border-blue-200 uppercase tracking-tighter text-[10px] font-black px-2 py-0.5">DÜZENLEME MODU</Badge>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Teklifi Güncelle</h1>
             </div>
-            <p className="text-slate-500 text-sm font-medium mt-0.5">KDV ve detaylı kalemlerle resmi satış teklifi oluşturun.</p>
+            <p className="text-slate-500 text-sm font-medium mt-0.5">Mevcut teklif içeriğini ve fiyatlarını revize edin.</p>
           </div>
         </div>
         
         <Button 
             onClick={handleSubmit}
-            disabled={loading || !selectedCustomerId || items.length === 0}
-            className="bg-slate-900 hover:bg-slate-800 text-white h-14 px-8 rounded-2xl shadow-lg shadow-slate-200 font-black text-sm uppercase tracking-tighter transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-3"
+            disabled={saving || !selectedCustomerId || items.length === 0}
+            className="bg-blue-600 hover:bg-blue-700 text-white h-14 px-8 rounded-2xl shadow-lg shadow-blue-200 font-black text-sm uppercase tracking-tighter transition-all flex items-center gap-3"
         >
-            {loading ? "KAYDEDİLİYOR..." : <><Send className="w-5 h-5 text-orange-400" /> TEKLİFİ KAYDET VE YAYINLA</>}
+            {saving ? "GÜNCELLENİYOR..." : <><Save className="w-5 h-5" /> DEĞİŞİKLİKLERİ KAYDET</>}
         </Button>
       </div>
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Sidebar: Settings */}
         <div className="lg:col-span-4 space-y-6">
-          <Card className="rounded-[2rem] border-none shadow-2xl shadow-slate-200/50 overflow-hidden">
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
-              <CardTitle className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
-                    <UserPlus className="w-4 h-4 text-blue-600" />
-                </div>
-                Müşteri & Vade
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
+          <Card className="rounded-[2rem] border-none shadow-2xl shadow-slate-200/50 p-6 space-y-6">
               <div className="space-y-3">
                 <Label className="text-xs font-black text-slate-500 uppercase tracking-tighter">Teklif Veren Şirket</Label>
                 <div className="relative">
@@ -210,18 +239,18 @@ export default function TeklifOlustur() {
               <div className="space-y-3">
                 <Label className="text-xs font-black text-slate-500 uppercase tracking-tighter">İlgili Müşteri / Firma</Label>
                 <select 
-                  className="flex h-12 w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-2 text-sm font-bold focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none"
+                  className="flex h-12 w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-2 text-sm font-bold focus:ring-4 focus:ring-blue-100 outline-none transition-all"
                   value={selectedCustomerId}
                   onChange={e => setSelectedCustomerId(e.target.value)}
                   required
                 >
-                  <option value="">Lütfen seçim yapınız...</option>
+                  <option value="">Müşteri Seç...</option>
                   {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
 
               <div className="space-y-3">
-                <Label className="text-xs font-black text-slate-500 uppercase tracking-tighter">Teklif Geçerlilik Tarihi</Label>
+                <Label className="text-xs font-black text-slate-500 uppercase tracking-tighter">Geçerlilik Tarihi</Label>
                 <div className="relative">
                     <Input 
                         type="date"
@@ -251,10 +280,9 @@ export default function TeklifOlustur() {
               </div>
 
               <div className="space-y-3">
-                <Label className="text-xs font-black text-slate-500 uppercase tracking-tighter">Özel Not & Açıklama</Label>
+                <Label className="text-xs font-black text-slate-500 uppercase tracking-tighter">Notlar</Label>
                 <div className="relative">
                     <Input 
-                        placeholder="Örn: %10 özel indirim..."
                         value={note}
                         onChange={e => setNote(e.target.value)}
                         className="h-12 rounded-2xl border-slate-200 bg-slate-50/50 font-bold pl-11"
@@ -262,12 +290,9 @@ export default function TeklifOlustur() {
                     <FileText className="absolute left-4 top-3.5 w-4 h-4 text-slate-400" />
                 </div>
               </div>
-            </CardContent>
           </Card>
 
-          <Card className="rounded-[2rem] bg-gradient-to-br from-slate-900 to-slate-800 text-white border-none shadow-2xl shadow-slate-900/20 overflow-hidden relative group">
-            <CardContent className="p-8 relative z-10">
-              <div className="space-y-4">
+          <Card className="rounded-[2rem] bg-slate-900 text-white p-8 space-y-4">
                 <div className="flex justify-between items-center text-slate-400 text-[10px] uppercase font-black tracking-widest">
                     <span>Ara Toplam</span>
                     <span className="text-white font-bold">{totals.subTotal.toLocaleString('tr-TR')} {getCurrencySymbol(currency)}</span>
@@ -277,30 +302,18 @@ export default function TeklifOlustur() {
                     <span className="text-white font-bold">{totals.taxTotal.toLocaleString('tr-TR')} {getCurrencySymbol(currency)}</span>
                 </div>
                 <div className="h-px bg-white/10 w-full my-2"></div>
-                <div className="flex justify-between items-end">
-                    <div className="space-y-1">
-                        <p className="text-blue-400 text-[10px] uppercase font-black tracking-[0.2em]">Genel Toplam</p>
-                        <p className="text-4xl font-black tracking-tight text-white">{totals.grandTotal.toLocaleString('tr-TR')} <span className="text-xl">{getCurrencySymbol(currency)}</span></p>
-                    </div>
+                <div className="space-y-1">
+                    <p className="text-blue-400 text-[10px] uppercase font-black tracking-[0.2em]">Revize Edilen Toplam</p>
+                    <p className="text-4xl font-black text-white">{totals.grandTotal.toLocaleString('tr-TR')} {getCurrencySymbol(currency)}</p>
                 </div>
-              </div>
-            </CardContent>
           </Card>
         </div>
 
-        {/* Right Content: Item List */}
         <div className="lg:col-span-8 space-y-6 !overflow-visible">
           <Card className="rounded-[2rem] border-none shadow-2xl shadow-slate-200/50 !overflow-visible">
             <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 p-8">
-              <div>
-                <CardTitle className="text-lg font-black text-slate-800 uppercase tracking-tight flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-orange-100 flex items-center justify-center">
-                        <Package className="w-5 h-5 text-orange-600" />
-                    </div>
-                    Teklif Kalemleri
-                </CardTitle>
-              </div>
-              <Button type="button" onClick={addItem} className="bg-white hover:bg-orange-50 text-orange-600 border-2 border-orange-200 shadow-sm rounded-xl px-5 font-black text-xs uppercase tracking-tighter h-11 transition-all">
+              <CardTitle className="text-lg font-black text-slate-800 uppercase tracking-tight">Teklif Kalemleri</CardTitle>
+              <Button type="button" onClick={addItem} className="bg-white hover:bg-orange-50 text-orange-600 border-2 border-orange-200 shadow-sm rounded-xl font-black text-xs h-11">
                 <Plus className="w-4 h-4 mr-2" /> ÜRÜN EKLE
               </Button>
             </CardHeader>
@@ -322,7 +335,7 @@ export default function TeklifOlustur() {
                     <tr key={index} className="group transition-colors hover:bg-slate-50/30 border-b border-slate-100 last:border-0">
                       <td className="relative overflow-visible pl-8 py-5">
                         <div 
-                          className={`flex h-12 w-full min-w-0 items-center justify-between rounded-2xl border bg-white px-4 py-2 text-sm font-bold cursor-pointer transition-all shadow-sm group/select ${openSearchIdx === index ? 'border-blue-500 ring-4 ring-blue-100' : 'border-slate-200 hover:border-blue-400'}`}
+                          className={`flex h-12 w-full min-w-0 items-center justify-between rounded-2xl border bg-white px-4 py-2 text-sm font-bold cursor-pointer transition-all shadow-sm ${openSearchIdx === index ? 'border-blue-500 ring-4 ring-blue-100' : 'border-slate-200'}`}
                           onClick={() => {
                             setOpenSearchIdx(openSearchIdx === index ? null : index);
                             setSearchTerm("");
@@ -334,7 +347,7 @@ export default function TeklifOlustur() {
                               : "Ürün Seç..."
                             }
                           </span>
-                          <Search className="w-4 h-4 text-slate-400 group-hover/select:text-blue-500 shrink-0 ml-2" />
+                          <Search className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
                         </div>
 
                         {openSearchIdx === index && (
@@ -358,6 +371,7 @@ export default function TeklifOlustur() {
                                     p.barcode.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR"))
                                   )
                                   .map(p => {
+                                    // Calculate total stock
                                     const totalStock = stocks
                                       .filter(s => s.product_id === p.id)
                                       .reduce((acc, s) => acc + s.quantity, 0);
@@ -397,7 +411,7 @@ export default function TeklifOlustur() {
                                             <div className="flex items-center gap-1.5">
                                               <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">{p.category || "Genel"}</span>
                                               <div className="w-0.5 h-0.5 rounded-full bg-slate-300"></div>
-                                              <span className="text-[9px] text-blue-500 font-black">Fiyat: {p.sale_price?.toLocaleString('tr-TR')} ₺</span>
+                                              <span className="text-[9px] text-blue-500 font-black">Fiyat: {p.sale_price?.toLocaleString('tr-TR')} {getCurrencySymbol(currency)}</span>
                                             </div>
                                           </div>
                                         </div>
@@ -432,7 +446,7 @@ export default function TeklifOlustur() {
                             onChange={e => updateItem(index, "unit_price", Number(e.target.value))}
                             className="h-12 rounded-2xl border-slate-200 font-black text-sm pl-8"
                           />
-                          <span className="absolute left-3 top-3.5 text-xs font-black text-slate-400">₺</span>
+                          <span className="absolute left-3 top-3.5 text-xs font-black text-slate-400">{getCurrencySymbol(currency)}</span>
                         </div>
                       </td>
                       <td className="py-5">

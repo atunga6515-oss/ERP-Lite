@@ -33,6 +33,9 @@ export default function Uretim() {
   const [message, setMessage] = useState<{type: "error" | "success", text: string} | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
   const fetchData = async () => {
     try {
       const [pRes, wRes, sRes] = await Promise.all([
@@ -206,27 +209,72 @@ export default function Uretim() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Sol Panel: Ne Üretilecek? */}
-        <Card className="lg:col-span-4 border-t-4 border-t-orange-500 shadow-lg h-fit">
+        <Card className="lg:col-span-4 border-t-4 border-t-orange-500 shadow-lg h-fit !overflow-visible">
           <CardHeader className="bg-orange-50">
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-orange-600" />
               Üretim Planı
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-6 space-y-6">
+          <CardContent className="pt-6 space-y-6 !overflow-visible">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-2 relative">
                 <Label className="font-bold">Üretilecek Mamul</Label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={producedProductId}
-                  onChange={e => setProducedProductId(e.target.value)}
+                <div 
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:border-orange-500 transition-all shadow-sm"
+                  onClick={() => setIsSearchOpen(!isSearchOpen)}
                 >
-                  <option value="">Mamul Seçiniz...</option>
-                  {products.filter(p => p.barcode?.startsWith("ALP")).map(p => (
-                    <option key={p.id} value={p.id}>{p.barcode} - {p.name}</option>
-                  ))}
-                </select>
+                  <span className={producedProductId ? "text-slate-900 font-bold truncate" : "text-slate-400 truncate"}>
+                    {producedProductId 
+                      ? products.find(p => String(p.id) === producedProductId)?.name || "Seçiniz..."
+                      : "Ürün Seçiniz..."
+                    }
+                  </span>
+                  <Search className="w-4 h-4 text-slate-400 shrink-0 ml-1" />
+                </div>
+
+                {isSearchOpen && (
+                  <div className="absolute z-50 w-[250px] mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-2 border-b bg-slate-50 flex items-center gap-2">
+                      <Search className="w-4 h-4 text-slate-400" />
+                      <Input 
+                        placeholder="Ara..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        autoFocus
+                        className="h-8 text-xs border-none bg-transparent focus-visible:ring-0 p-0 shadow-none"
+                      />
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto custom-scrollbar bg-white">
+                      {products
+                        .filter(p => 
+                          p.name.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR")) || 
+                          p.barcode.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR"))
+                        )
+                        .map(p => (
+                          <div 
+                            key={p.id}
+                            className={`flex flex-col p-2 border-b border-slate-50 transition-all cursor-pointer group hover:bg-orange-50/50 ${
+                              String(p.id) === producedProductId 
+                              ? 'bg-orange-50 border-l-4 border-l-orange-600' 
+                              : 'bg-white border-l-4 border-l-transparent'
+                            }`}
+                            onClick={() => {
+                              setProducedProductId(String(p.id));
+                              setIsSearchOpen(false);
+                              setSearchTerm("");
+                            }}
+                          >
+                            <span className={`text-[9px] font-mono font-bold ${String(p.id) === producedProductId ? 'text-orange-600' : 'text-slate-400'}`}>
+                              {p.barcode}
+                            </span>
+                            <span className="font-bold text-[11px] text-slate-800 leading-tight">{p.name}</span>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label className="font-bold">Üretilecek Miktar</Label>

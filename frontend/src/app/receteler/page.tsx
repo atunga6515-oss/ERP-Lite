@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Plus, Trash2, Save, BookOpen, CheckCircle, Info } from "lucide-react";
+import { Search, Plus, Trash2, Save, BookOpen, CheckCircle, Info, Upload, Image as ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
+const UPLOAD_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080` : "http://localhost:8080";
 
 export default function Receteler() {
   const [products, setProducts] = useState<any[]>([]);
@@ -22,6 +23,9 @@ export default function Receteler() {
 
   const [selectedMainProduct, setSelectedMainProduct] = useState("");
   const [recipeItems, setRecipeItems] = useState<any[]>([]);
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [existingImagePath, setExistingImagePath] = useState<string | null>(null);
   const [isEdit, setIsEdit] = useState(false);
   const [stocks, setStocks] = useState<any[]>([]);
   const [mainSearchTerm, setMainSearchTerm] = useState("");
@@ -51,6 +55,9 @@ export default function Receteler() {
   const openCreateDialog = () => {
     setSelectedMainProduct("");
     setRecipeItems([]);
+    setImage(null);
+    setImagePreview(null);
+    setExistingImagePath(null);
     setIsEdit(false);
     setIsDialogOpen(true);
   };
@@ -61,8 +68,23 @@ export default function Receteler() {
       product_id: String(item.product_id),
       quantity: item.quantity
     })) || []);
+    setExistingImagePath(recipe.image_path || null);
+    setImagePreview(recipe.image_path ? `${UPLOAD_URL}/${recipe.image_path}` : null);
+    setImage(null);
     setIsEdit(true);
     setIsDialogOpen(true);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const addRecipeItem = () => {
@@ -85,23 +107,21 @@ export default function Receteler() {
       return;
     }
 
-    if (recipeItems.some(item => !item.product_id || item.quantity <= 0)) {
-      alert("Lütfen tüm hammaddeleri ve miktarlarını doğru girin.");
-      return;
-    }
-
-    if (!isEdit) {
-      const alreadyExists = recipes.some(r => String(r.product_id) === selectedMainProduct);
-      if (alreadyExists) {
-        alert("Bu ürün için zaten bir reçete tanımlanmış! Mevcut reçeteyi listeden bulup düzenleyebilirsiniz.");
-        return;
-      }
-    }
-
     setLoading(true);
     try {
+      let imagePath = existingImagePath;
+
+      // Upload image if selected
+      if (image) {
+        const formData = new FormData();
+        formData.append("image", image);
+        const uploadRes = await axios.post(`${API_URL}/upload`, formData);
+        imagePath = uploadRes.data.path;
+      }
+
       await axios.post(`${API_URL}/recipes`, {
         product_id: Number(selectedMainProduct),
+        image_path: imagePath,
         items: recipeItems.map(item => ({
           product_id: Number(item.product_id),
           quantity: Number(item.quantity)
@@ -232,7 +252,7 @@ export default function Receteler() {
                     <div className="space-y-2 relative">
                       <Label className="text-sm font-bold text-gray-600">Mamul Seçin</Label>
                       <div 
-                        className={`flex h-12 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-lg font-bold ${isEdit ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-orange-400'}`}
+                        className={`flex h-12 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-lg font-bold shadow-sm ${isEdit ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-orange-400 transition-all'}`}
                         onClick={() => !isEdit && setIsMainSearchOpen(!isMainSearchOpen)}
                       >
                         <span className={selectedMainProduct ? "text-slate-900" : "text-slate-400"}>
@@ -245,31 +265,32 @@ export default function Receteler() {
                       </div>
 
                       {isMainSearchOpen && (
-                        <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                          <div className="p-2 border-b bg-slate-50">
+                        <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="p-3 border-b bg-slate-50 flex items-center gap-2">
+                            <Search className="w-4 h-4 text-slate-400" />
                             <Input 
-                              placeholder="Mamul adı veya barkod..." 
+                              placeholder="Ürün adı veya barkod ile ara..." 
                               value={mainSearchTerm}
                               onChange={(e) => setMainSearchTerm(e.target.value)}
                               autoFocus
-                              className="h-8 text-xs"
+                              className="h-9 text-sm border-none bg-transparent focus-visible:ring-0 p-0 shadow-none"
                             />
                           </div>
-                          <div className="max-h-[300px] overflow-y-auto p-2 grid grid-cols-1 md:grid-cols-2 gap-2 bg-slate-50/50">
+                          <div className="max-h-[350px] overflow-y-auto custom-scrollbar bg-white">
                             {products
                               .filter(p => p.barcode?.startsWith("ALP"))
                               .filter(p => isEdit || !recipes.some(r => r.product_id === p.id))
                               .filter(p => 
-                                p.name.toLowerCase().includes(mainSearchTerm.toLowerCase()) || 
-                                p.barcode.toLowerCase().includes(mainSearchTerm.toLowerCase())
+                                p.name.toLocaleLowerCase("tr-TR").includes(mainSearchTerm.toLocaleLowerCase("tr-TR")) || 
+                                p.barcode.toLocaleLowerCase("tr-TR").includes(mainSearchTerm.toLocaleLowerCase("tr-TR"))
                               )
                               .map(p => (
                                 <div 
                                   key={p.id}
-                                  className={`flex flex-col p-3 border-2 rounded-xl transition-all cursor-pointer group hover:shadow-md ${
+                                  className={`flex items-center justify-between p-3 border-b border-slate-50 transition-all cursor-pointer group hover:bg-orange-50/50 ${
                                     String(p.id) === selectedMainProduct 
-                                    ? 'bg-orange-600 border-orange-600 text-white' 
-                                    : 'bg-white border-slate-200 hover:border-orange-400'
+                                    ? 'bg-orange-50 border-l-4 border-l-orange-600' 
+                                    : 'bg-white border-l-4 border-l-transparent'
                                   }`}
                                   onClick={() => {
                                     setSelectedMainProduct(String(p.id));
@@ -277,12 +298,18 @@ export default function Receteler() {
                                     setMainSearchTerm("");
                                   }}
                                 >
-                                  <div className="flex justify-between items-start mb-1">
-                                    <span className={`text-[10px] font-mono font-bold ${String(p.id) === selectedMainProduct ? 'text-orange-100' : 'text-slate-400'}`}>
-                                      {p.barcode}
-                                    </span>
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-bold`}>
+                                        {p.barcode}
+                                      </span>
+                                      <span className="font-bold text-sm text-slate-800">{p.name}</span>
+                                    </div>
+                                    <span className="text-[11px] text-slate-400 italic">{p.category || "Genel"}</span>
                                   </div>
-                                  <span className="font-bold text-xs leading-tight">{p.name}</span>
+                                  <div className="text-right">
+                                    {String(p.id) === selectedMainProduct && <CheckCircle className="w-5 h-5 text-orange-600" />}
+                                  </div>
                                 </div>
                               ))
                             }
@@ -290,6 +317,40 @@ export default function Receteler() {
                         </div>
                       )}
                       {isEdit && <p className="text-xs text-orange-600 font-bold italic">* Düzenleme modunda ana ürün değiştirilemez.</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-bold text-gray-600">Makine / Mamul Resmi</Label>
+                      <div className="flex flex-col items-center gap-4 p-4 border-2 border-dashed border-slate-200 rounded-xl bg-white hover:border-orange-400 transition-all group">
+                        {imagePreview ? (
+                          <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-slate-100 border">
+                            <img src={imagePreview} alt="Preview" className="w-full h-full object-contain" />
+                            <Button 
+                              variant="destructive" 
+                              size="icon" 
+                              className="absolute top-2 right-2 rounded-full w-8 h-8"
+                              onClick={() => {
+                                setImage(null);
+                                setImagePreview(null);
+                                setExistingImagePath(null);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center w-full aspect-video cursor-pointer hover:bg-slate-50 transition-colors">
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                              <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                <Upload className="w-6 h-6 text-orange-600" />
+                              </div>
+                              <p className="mb-2 text-sm text-gray-500 font-bold">Resim Yüklemek İçin Tıklayın</p>
+                              <p className="text-xs text-gray-400 font-medium">PNG, JPG veya JPEG (Max. 5MB)</p>
+                            </div>
+                            <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
+                          </label>
+                        )}
+                      </div>
                     </div>
 
                     <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl space-y-2">
@@ -333,7 +394,7 @@ export default function Receteler() {
                             <TableCell className="font-bold text-slate-400">#{idx + 1}</TableCell>
                             <TableCell className="relative p-2">
                               <div 
-                                className="flex h-10 w-full items-center justify-between rounded-md border-2 border-slate-200 bg-white px-3 py-0 text-sm cursor-pointer hover:border-blue-400 transition-all overflow-hidden"
+                                className="flex h-10 w-full items-center justify-between rounded-md border-2 border-slate-200 bg-white px-3 py-0 text-sm cursor-pointer hover:border-blue-400 transition-all overflow-hidden shadow-sm"
                                 onClick={() => setOpenItemSearchIdx(openItemSearchIdx === idx ? null : idx)}
                               >
                                 <span className={`font-bold truncate whitespace-nowrap max-w-[380px] ${item.product_id ? "text-slate-900" : "text-slate-400"}`}>
@@ -346,22 +407,23 @@ export default function Receteler() {
                               </div>
 
                               {openItemSearchIdx === idx && (
-                                <div className="absolute left-0 top-full z-[100] w-[500px] mt-1 bg-white border-2 border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                  <div className="p-2 border-b bg-slate-50">
+                                <div className="absolute left-0 top-full z-[100] w-[500px] mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                  <div className="p-3 border-b bg-slate-50 flex items-center gap-2">
+                                    <Search className="w-4 h-4 text-slate-400" />
                                     <Input 
                                       placeholder="Hammadde adı veya barkod..." 
                                       value={itemSearchTerms[idx] || ""}
                                       onChange={(e) => setItemSearchTerms({...itemSearchTerms, [idx]: e.target.value})}
                                       autoFocus
-                                      className="h-8 text-xs"
+                                      className="h-8 text-xs border-none bg-transparent focus-visible:ring-0 p-0 shadow-none"
                                     />
                                   </div>
-                                  <div className="max-h-[300px] overflow-y-auto p-2 grid grid-cols-1 gap-1.5 bg-slate-50/50">
+                                  <div className="max-h-[300px] overflow-y-auto custom-scrollbar bg-white">
                                     {products
                                       .filter(p => String(p.id) !== selectedMainProduct)
                                       .filter(p => {
-                                        const term = itemSearchTerms[idx]?.toLowerCase() || "";
-                                        return p.name.toLowerCase().includes(term) || p.barcode.toLowerCase().includes(term);
+                                        const term = (itemSearchTerms[idx] || "").toLocaleLowerCase("tr-TR");
+                                        return p.name.toLocaleLowerCase("tr-TR").includes(term) || p.barcode.toLocaleLowerCase("tr-TR").includes(term);
                                       })
                                       .map(p => {
                                         const totalStock = stocks
@@ -371,10 +433,10 @@ export default function Receteler() {
                                         return (
                                           <div 
                                             key={p.id}
-                                            className={`flex flex-col p-3 border-2 rounded-xl transition-all cursor-pointer group hover:shadow-md ${
+                                            className={`flex items-center justify-between p-3 border-b border-slate-50 transition-all cursor-pointer group hover:bg-blue-50/50 ${
                                               isSelected 
-                                              ? 'bg-blue-600 border-blue-600 text-white' 
-                                              : 'bg-white border-slate-200 hover:border-blue-400'
+                                              ? 'bg-blue-50 border-l-4 border-l-blue-600' 
+                                              : 'bg-white border-l-4 border-l-transparent'
                                             }`}
                                             onClick={() => {
                                               updateRecipeItem(idx, "product_id", String(p.id));
@@ -382,15 +444,21 @@ export default function Receteler() {
                                               setItemSearchTerms({...itemSearchTerms, [idx]: ""});
                                             }}
                                           >
-                                            <div className="flex justify-between items-center mb-1">
-                                              <span className={`text-[10px] font-mono font-bold ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
-                                                {p.barcode}
-                                              </span>
-                                              <span className={`text-[10px] font-bold ${isSelected ? 'text-white' : 'text-blue-600'}`}>
-                                                STOK: {totalStock}
-                                              </span>
+                                            <div className="flex flex-col gap-0.5">
+                                              <div className="flex items-center gap-2">
+                                                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-bold`}>
+                                                  {p.barcode}
+                                                </span>
+                                                <span className="font-bold text-sm text-slate-800">{p.name}</span>
+                                              </div>
+                                              <span className="text-[11px] text-slate-400 italic">{p.category || "Genel"}</span>
                                             </div>
-                                            <span className="font-bold text-xs leading-tight">{p.name}</span>
+                                            <div className="text-right flex flex-col items-end gap-1">
+                                              <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+                                                Stok: {totalStock} {p.unit}
+                                              </Badge>
+                                              {isSelected && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                                            </div>
                                           </div>
                                         );
                                       })

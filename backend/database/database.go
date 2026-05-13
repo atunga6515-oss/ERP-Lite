@@ -51,6 +51,7 @@ func Connect() {
 		&models.WorkOrder{},
 		&models.Quote{},
 		&models.QuoteItem{},
+		&models.IssuingCompany{},
 		&models.Permission{},
 		&models.ResetToken{},
 		&models.NotificationRule{},

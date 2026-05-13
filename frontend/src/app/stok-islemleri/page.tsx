@@ -16,13 +16,10 @@ export default function StokIslemleri() {
   const [products, setProducts] = useState<any[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [stocks, setStocks] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
-  
   const [type, setType] = useState("Giriş");
   const [globalNote, setGlobalNote] = useState("");
   const [fromWarehouseId, setFromWarehouseId] = useState("");
   const [toWarehouseId, setToWarehouseId] = useState("");
-  const [customerId, setCustomerId] = useState("");
   
   const [search, setSearch] = useState("");
   const [selectedItems, setSelectedItems] = useState<{ [key: number]: number }>({}); 
@@ -33,16 +30,14 @@ export default function StokIslemleri() {
 
   const fetchData = async () => {
     try {
-      const [pRes, wRes, sRes, cRes] = await Promise.all([
+      const [pRes, wRes, sRes] = await Promise.all([
         axios.get(`${API_URL}/products`),
         axios.get(`${API_URL}/warehouses`),
-        axios.get(`${API_URL}/stocks`),
-        axios.get(`${API_URL}/customers`)
+        axios.get(`${API_URL}/stocks`)
       ]);
       setProducts(pRes.data || []);
       setWarehouses(wRes.data || []);
       setStocks(sRes.data || []);
-      setCustomers(cRes.data || []);
     } catch (err) {
       console.error(err);
     }
@@ -79,39 +74,6 @@ export default function StokIslemleri() {
       return;
     }
 
-    if (type === "Satış") {
-      if (!customerId || !fromWarehouseId) {
-        setMessage({ type: "error", text: "Satış işlemi için lütfen müşteri ve depo seçin." });
-        return;
-      }
-
-      const salePayload = {
-        customer_id: Number(customerId),
-        note: globalNote,
-        user_id: 1,
-        sale_date: new Date().toISOString(),
-        items: selectedProductIds.map(id => ({
-          product_id: Number(id),
-          warehouse_id: Number(fromWarehouseId),
-          quantity: selectedItems[Number(id)],
-          unit_price: 0 
-        }))
-      };
-
-      setLoading(true);
-      try {
-        await axios.post(`${API_URL}/sales`, salePayload);
-        setMessage({ type: "success", text: `${salePayload.items.length} kalem ürün satışı başarıyla kaydedildi!` });
-        setSelectedItems({});
-        setGlobalNote("");
-        fetchData();
-      } catch (error: any) {
-        setMessage({ type: "error", text: error.response?.data?.error || "Satış kaydedilirken hata oluştu." });
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
 
     if ((type === "Çıkış" || type === "Transfer") && !fromWarehouseId) {
       setMessage({ type: "error", text: "Lütfen çıkış yapılacak depoyu seçin." });
@@ -156,7 +118,7 @@ export default function StokIslemleri() {
 
   let displayProducts: any[] = [];
 
-  if (type === "Çıkış" || type === "Transfer" || type === "Satış") {
+  if (type === "Çıkış" || type === "Transfer") {
     if (fromWarehouseId) {
       const availableStocks = stocks.filter(s => String(s.warehouse_id) === fromWarehouseId && s.quantity > 0);
       const availableProductIds = availableStocks.map(s => s.product_id);
@@ -199,7 +161,7 @@ export default function StokIslemleri() {
             <div className="flex flex-col gap-2">
               <Label>İşlem Türü</Label>
               <div className="flex flex-wrap gap-2">
-                {["Giriş", "Çıkış", "Transfer", "Satış"].map(t => (
+                {["Giriş", "Çıkış", "Transfer"].map(t => (
                   <Button 
                     key={t} 
                     variant={type === t ? "default" : "outline"}
@@ -212,7 +174,7 @@ export default function StokIslemleri() {
               </div>
             </div>
 
-            {(type === "Çıkış" || type === "Transfer" || type === "Satış") && (
+            {(type === "Çıkış" || type === "Transfer") && (
               <div className="space-y-2">
                 <Label>Çıkış Yapılacak Depo</Label>
                 <select 
@@ -228,21 +190,6 @@ export default function StokIslemleri() {
               </div>
             )}
 
-            {type === "Satış" && (
-              <div className="space-y-2">
-                <Label>Müşteri Seçimi</Label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                  value={customerId}
-                  onChange={e => setCustomerId(e.target.value)}
-                >
-                  <option value="">Müşteri Seçiniz...</option>
-                  {customers.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             {(type === "Giriş" || type === "Transfer") && (
               <div className="space-y-2">
@@ -335,13 +282,13 @@ export default function StokIslemleri() {
                                 <Input 
                                   type="number" 
                                   min="1"
-                                  max={(type === "Çıkış" || type === "Transfer" || type === "Satış") ? p.currentStock : undefined}
+                                  max={(type === "Çıkış" || type === "Transfer") ? p.currentStock : undefined}
                                   step="1"
                                   className="w-20 h-8 font-bold border-blue-400 focus-visible:ring-blue-500"
                                   value={selectedItems[p.id] || ""}
                                   onChange={(e) => {
                                     let val = Number(e.target.value);
-                                    if ((type === "Çıkış" || type === "Transfer" || type === "Satış") && val > p.currentStock) {
+                                    if ((type === "Çıkış" || type === "Transfer") && val > p.currentStock) {
                                       val = p.currentStock;
                                     }
                                     handleQuantityChange(p.id, val.toString());
@@ -371,7 +318,7 @@ export default function StokIslemleri() {
                   {filteredProducts.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
-                        {(type === "Çıkış" || type === "Transfer" || type === "Satış") && !fromWarehouseId 
+                        {(type === "Çıkış" || type === "Transfer") && !fromWarehouseId 
                           ? "Lütfen önce sol taraftan çıkış yapılacak depoyu seçin." 
                           : "Bu kritere veya seçili depoya uygun stok/ürün bulunamadı."}
                       </TableCell>
