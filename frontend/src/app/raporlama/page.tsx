@@ -23,6 +23,7 @@ export default function Raporlama() {
   const [stocks, setStocks] = useState<any[]>([]);
   const [movements, setMovements] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters for Stock
@@ -33,20 +34,23 @@ export default function Raporlama() {
   const [movEndDate, setMovEndDate] = useState("");
   const [movType, setMovType] = useState("all");
   const [movWarehouse, setMovWarehouse] = useState("all");
+  const [movCustomer, setMovCustomer] = useState("all");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [wRes, sRes, mRes, pRes] = await Promise.all([
+        const [wRes, sRes, mRes, pRes, cRes] = await Promise.all([
           axios.get(`${API_URL}/warehouses`),
           axios.get(`${API_URL}/stocks`),
           axios.get(`${API_URL}/movements?limit=all`),
-          axios.get(`${API_URL}/purchases`)
+          axios.get(`${API_URL}/purchases`),
+          axios.get(`${API_URL}/customers`)
         ]);
         setWarehouses(wRes.data || []);
         setStocks(sRes.data || []);
         setMovements(mRes.data || []);
         setPurchases(pRes.data || []);
+        setCustomers(cRes.data || []);
       } catch (err) {
         console.error("Veri çekme hatası:", err);
       } finally {
@@ -73,6 +77,11 @@ export default function Raporlama() {
       if (m.from_warehouse_id !== wId && m.to_warehouse_id !== wId) {
         isValid = false;
       }
+    }
+
+    // Customer filter
+    if (movCustomer !== "all" && String(m.customer_id) !== movCustomer) {
+      isValid = false;
     }
 
     // Date filter
@@ -172,7 +181,7 @@ export default function Raporlama() {
                 <FileSpreadsheet className="w-5 h-5 mr-2" /> Excel'e Aktar
               </Button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6 mt-6">
               <div className="space-y-2">
                 <Label className="text-gray-600">Başlangıç Tarihi</Label>
                 <Input type="date" value={movStartDate} onChange={e => setMovStartDate(e.target.value)} />
@@ -192,6 +201,7 @@ export default function Raporlama() {
                   <option value="Çıkış">Çıkış</option>
                   <option value="Transfer">Transfer</option>
                   <option value="Satış">Satış</option>
+                  <option value="Satış Sevkiyatı">Satış Sevkiyatı</option>
                   <option value="Satınalma Girişi">Satınalma Girişi</option>
                   <option value="Üretim Sarfiyatı">Üretim Sarfiyatı</option>
                   <option value="Üretimden Giriş">Üretimden Giriş</option>
@@ -205,6 +215,16 @@ export default function Raporlama() {
                 >
                   <option value="all">Tüm Depolar</option>
                   {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-gray-600">Müşteri / Firma</Label>
+                <select 
+                  className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600"
+                  value={movCustomer} onChange={e => setMovCustomer(e.target.value)}
+                >
+                  <option value="all">Tüm Müşteriler</option>
+                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
             </div>

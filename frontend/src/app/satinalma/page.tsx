@@ -233,22 +233,22 @@ export default function Satinalma() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-12 space-y-6">
-          <Card className="border-t-4 border-t-orange-600 shadow-md">
+          <Card className="border-t-4 border-t-orange-600 shadow-md !overflow-visible">
             <CardHeader className="bg-gray-50 border-b py-4">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Package className="w-5 h-5 text-orange-600" />
                 Siparişe Ürün Ekle
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 !overflow-visible">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div className="space-y-2 relative">
                   <Label className="text-xs font-bold text-gray-600 uppercase">Ürün</Label>
                   <div 
-                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm cursor-pointer hover:border-orange-400 transition-all"
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm cursor-pointer hover:border-orange-400 transition-all shadow-sm"
                     onClick={() => setIsSearchOpen(!isSearchOpen)}
                   >
-                    <span className={selectedProductId ? "text-slate-900" : "text-slate-400 truncate"}>
+                    <span className={selectedProductId ? "text-slate-900 font-bold" : "text-slate-400 truncate"}>
                       {selectedProductId 
                         ? products.find(p => String(p.id) === selectedProductId)?.name || "Seçiniz..."
                         : "Ürün Seçiniz..."
@@ -258,30 +258,30 @@ export default function Satinalma() {
                   </div>
 
                   {isSearchOpen && (
-                    <div className="absolute z-50 w-[300px] mt-2 bg-white border border-slate-200 rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                      <div className="p-2 border-b bg-slate-50">
+                    <div className="absolute z-50 w-full min-w-[350px] mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="p-3 border-b bg-slate-50 flex items-center gap-2">
+                        <Search className="w-4 h-4 text-slate-400" />
                         <Input 
-                          placeholder="Ürün adı veya barkod..." 
+                          placeholder="Ürün adı veya barkod ile ara..." 
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           autoFocus
-                          className="h-8 text-xs"
+                          className="h-9 text-sm border-none bg-transparent focus-visible:ring-0 p-0 shadow-none"
                         />
                       </div>
-                      <div className="max-h-[350px] overflow-y-auto p-2 grid grid-cols-1 md:grid-cols-2 gap-2 bg-slate-50/50">
+                      <div className="max-h-[400px] overflow-y-auto custom-scrollbar bg-white">
                         {products
-                          .filter(p => !p.barcode?.startsWith("ALP")) // Only raw materials
                           .filter(p => 
-                            p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            p.barcode.toLowerCase().includes(searchTerm.toLowerCase())
+                            p.name.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR")) || 
+                            p.barcode.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR"))
                           )
                           .map(p => (
                             <div 
                               key={p.id}
-                              className={`flex flex-col p-2.5 border rounded-xl transition-all cursor-pointer group hover:shadow-md ${
+                              className={`flex items-center justify-between p-3 border-b border-slate-50 transition-all cursor-pointer group hover:bg-orange-50/50 ${
                                 String(p.id) === selectedProductId 
-                                ? 'bg-orange-600 border-orange-600 text-white shadow-orange-100' 
-                                : 'bg-white border-slate-200 hover:border-orange-400'
+                                ? 'bg-orange-50 border-l-4 border-l-orange-600' 
+                                : 'bg-white border-l-4 border-l-transparent'
                               }`}
                               onClick={() => {
                                 setSelectedProductId(String(p.id));
@@ -289,16 +289,29 @@ export default function Satinalma() {
                                 setSearchTerm("");
                               }}
                             >
-                              <div className="flex justify-between items-start mb-0.5">
-                                <span className={`text-[9px] font-mono ${String(p.id) === selectedProductId ? 'text-orange-100' : 'text-slate-400'}`}>
-                                  {p.barcode}
-                                </span>
-                                {String(p.id) === selectedProductId && <CheckCircle className="w-3 h-3 text-white" />}
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-bold`}>
+                                    {p.barcode}
+                                  </span>
+                                  <span className="font-bold text-sm text-slate-800">{p.name}</span>
+                                </div>
+                                <span className="text-[11px] text-slate-400 italic">{p.category || "Genel"}</span>
                               </div>
-                              <span className="font-bold text-[11px] leading-tight line-clamp-2">{p.name}</span>
+                              <div className="text-right">
+                                {String(p.id) === selectedProductId && <CheckCircle className="w-5 h-5 text-orange-600" />}
+                              </div>
                             </div>
                           ))
                         }
+                        {products.filter(p => 
+                          p.name.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR")) || 
+                          p.barcode.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR"))
+                        ).length === 0 && (
+                          <div className="p-10 text-center text-slate-400 text-sm italic">
+                            Aranan kriterlere uygun ürün bulunamadı.
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

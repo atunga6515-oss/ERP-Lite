@@ -207,6 +207,7 @@ func PerformSale(req SaleRequest) error {
 			SaleDate:   req.SaleDate,
 			Note:       req.Note,
 			UserID:     req.UserID,
+			Status:     "Hazırlanıyor",
 		}
 		if err := tx.Create(&sale).Error; err != nil {
 			return err
@@ -214,39 +215,7 @@ func PerformSale(req SaleRequest) error {
 
 		// 2. Process each item
 		for _, item := range req.Items {
-			// A. Check and Reduce Stock
-			var stock models.Stock
-			if err := tx.Preload("Product").Where("warehouse_id = ? AND product_id = ?", item.WarehouseID, item.ProductID).First(&stock).Error; err != nil {
-				return errors.New("ürün depoda bulunamadı")
-			}
-			if stock.Quantity < item.Quantity {
-				return errors.New("yetersiz stok: " + stock.Product.Name + " (Mevcut: " + strconv.FormatFloat(stock.Quantity, 'f', -1, 64) + ")")
-			}
-
-			oldQty := stock.Quantity
-			stock.Quantity -= item.Quantity
-			if err := tx.Model(&models.Stock{}).Where("warehouse_id = ? AND product_id = ?", item.WarehouseID, item.ProductID).Update("quantity", stock.Quantity).Error; err != nil {
-				return err
-			}
-
-			// B. Create Stock Movement
-			movement := models.StockMovement{
-				ProductID:       item.ProductID,
-				FromWarehouseID: &item.WarehouseID,
-				UserID:          req.UserID,
-				Quantity:        item.Quantity,
-				Type:            "Satış",
-				OldQuantity:     oldQty,
-				NewQuantity:     stock.Quantity,
-				Note:            req.Note,
-				Timestamp:       req.SaleDate,
-				CustomerID:      &req.CustomerID,
-			}
-			if err := tx.Create(&movement).Error; err != nil {
-				return err
-			}
-
-			// C. Create Sale Item
+			// Create Sale Item
 			saleItem := models.SaleItem{
 				SaleID:      sale.ID,
 				ProductID:   item.ProductID,
@@ -302,63 +271,120 @@ func PerformSale(req SaleRequest) error {
 	return err
 }
 
+func ShipSale(saleID uint, userID uint) error {
+	return database.DB.Transaction(func(tx *gorm.DB) error {
+		var sale models.Sale
+		if err := tx.Preload("Items.Product").First(&sale, saleID).Error; err != nil {
+			return fmt.Errorf("satış bulunamadı: %v", err)
+		}
+
+		if sale.Status != "Hazırlanıyor" {
+			return errors.New("bu satış zaten sevk edilmiş veya iptal edilmiş")
+		}
+
+		// Process each item for stock deduction
+		for _, item := range sale.Items {
+			var stock models.Stock
+			if err := tx.Preload("Product").Where("warehouse_id = ? AND product_id = ?", item.WarehouseID, item.ProductID).First(&stock).Error; err != nil {
+				return fmt.Errorf("%s ürünü depoda bulunamadı", item.Product.Name)
+			}
+
+			if stock.Quantity < item.Quantity {
+				return fmt.Errorf("yetersiz stok: %s (Mevcut: %v, Gereken: %v)", stock.Product.Name, stock.Quantity, item.Quantity)
+			}
+
+			oldQty := stock.Quantity
+			stock.Quantity -= item.Quantity
+			if err := tx.Model(&models.Stock{}).Where("warehouse_id = ? AND product_id = ?", item.WarehouseID, item.ProductID).Update("quantity", stock.Quantity).Error; err != nil {
+				return err
+			}
+
+			// Create Stock Movement
+			movement := models.StockMovement{
+				ProductID:       item.ProductID,
+				FromWarehouseID: &item.WarehouseID,
+				UserID:          userID,
+				Quantity:        item.Quantity,
+				Type:            "Satış Sevkiyatı",
+				OldQuantity:     oldQty,
+				NewQuantity:     stock.Quantity,
+				Note:            fmt.Sprintf("Satış No: #%d Sevkiyatı", sale.ID),
+				Timestamp:       time.Now(),
+				CustomerID:      &sale.CustomerID,
+			}
+			if err := tx.Create(&movement).Error; err != nil {
+				return err
+			}
+		}
+
+		// Update Sale Status
+		now := time.Now()
+		sale.Status = "Sevk Edildi"
+		sale.ShippedAt = &now
+		if err := tx.Save(&sale).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+
 func CancelSale(saleID uint, userID uint) error {
 	return database.DB.Transaction(func(tx *gorm.DB) error {
 		var sale models.Sale
-		// Preload everything needed
 		if err := tx.Preload("Items.Product").First(&sale, saleID).Error; err != nil {
 			return fmt.Errorf("satış kaydı bulunamadı: %v", err)
 		}
 
-		// 1. Reverse Stock for each item
-		for _, item := range sale.Items {
-			var stock models.Stock
-			err := tx.Where("warehouse_id = ? AND product_id = ?", item.WarehouseID, item.ProductID).First(&stock).Error
-			
-			oldQty := 0.0
-			if err == nil {
-				oldQty = stock.Quantity
-				stock.Quantity += item.Quantity
-				// Use explicit update to avoid GORM hook issues
-				if err := tx.Model(&models.Stock{}).Where("warehouse_id = ? AND product_id = ?", item.WarehouseID, item.ProductID).Update("quantity", stock.Quantity).Error; err != nil {
-					return fmt.Errorf("%s ürünü için stok güncellenemedi: %v", item.Product.Name, err)
+		// 1. If already shipped, reverse stock
+		if sale.Status == "Sevk Edildi" {
+			for _, item := range sale.Items {
+				var stock models.Stock
+				err := tx.Where("warehouse_id = ? AND product_id = ?", item.WarehouseID, item.ProductID).First(&stock).Error
+				
+				oldQty := 0.0
+				if err == nil {
+					oldQty = stock.Quantity
+					stock.Quantity += item.Quantity
+					if err := tx.Model(&models.Stock{}).Where("warehouse_id = ? AND product_id = ?", item.WarehouseID, item.ProductID).Update("quantity", stock.Quantity).Error; err != nil {
+						return fmt.Errorf("%s ürünü için stok güncellenemedi: %v", item.Product.Name, err)
+					}
+				} else {
+					stock = models.Stock{
+						WarehouseID: item.WarehouseID,
+						ProductID:   item.ProductID,
+						Quantity:    item.Quantity,
+					}
+					if err := tx.Create(&stock).Error; err != nil {
+						return fmt.Errorf("%s ürünü için yeni stok kaydı oluşturulamadı: %v", item.Product.Name, err)
+					}
 				}
-			} else {
-				// Create stock if it doesn't exist (safety)
-				stock = models.Stock{
-					WarehouseID: item.WarehouseID,
-					ProductID:   item.ProductID,
-					Quantity:    item.Quantity,
-				}
-				if err := tx.Create(&stock).Error; err != nil {
-					return fmt.Errorf("%s ürünü için yeni stok kaydı oluşturulamadı: %v", item.Product.Name, err)
-				}
-			}
 
-			// 2. Log Cancellation Movement
-			movement := models.StockMovement{
-				ProductID:     item.ProductID,
-				ToWarehouseID: &item.WarehouseID,
-				UserID:        userID,
-				Quantity:      item.Quantity,
-				Type:          "Satış İptali",
-				OldQuantity:   oldQty,
-				NewQuantity:   stock.Quantity,
-				Note:          fmt.Sprintf("Sipariş No: #%d İptal Edildi (İade Girişi)", sale.ID),
-				Timestamp:     time.Now(),
-				CustomerID:    &sale.CustomerID,
-			}
-			if err := tx.Create(&movement).Error; err != nil {
-				return fmt.Errorf("stok hareketi kaydedilemedi: %v", err)
+				movement := models.StockMovement{
+					ProductID:     item.ProductID,
+					ToWarehouseID: &item.WarehouseID,
+					UserID:        userID,
+					Quantity:      item.Quantity,
+					Type:          "Satış İptali",
+					OldQuantity:   oldQty,
+					NewQuantity:   stock.Quantity,
+					Note:          fmt.Sprintf("Sipariş No: #%d İptal Edildi (İade Girişi)", sale.ID),
+					Timestamp:     time.Now(),
+					CustomerID:    &sale.CustomerID,
+				}
+				if err := tx.Create(&movement).Error; err != nil {
+					return fmt.Errorf("stok hareketi kaydedilemedi: %v", err)
+				}
 			}
 		}
 
-		// 3. Delete Sale Items FIRST (to avoid FK constraints)
+		// 2. Delete Sale Items
 		if err := tx.Where("sale_id = ?", sale.ID).Delete(&models.SaleItem{}).Error; err != nil {
 			return fmt.Errorf("satış kalemleri silinemedi: %v", err)
 		}
 
-		// 4. Delete Sale Header
+		// 3. Delete Sale Header
 		if err := tx.Delete(&sale).Error; err != nil {
 			return fmt.Errorf("ana satış kaydı silinemedi: %v", err)
 		}
@@ -929,7 +955,7 @@ func DeleteWorkOrder(id uint) error {
 func ConvertQuoteToSale(quoteID uint, warehouseID uint, userID uint) error {
 	return database.DB.Transaction(func(tx *gorm.DB) error {
 		var quote models.Quote
-		if err := tx.Preload("Items").First(&quote, quoteID).Error; err != nil {
+		if err := tx.Preload("Items.Product").First(&quote, quoteID).Error; err != nil {
 			return err
 		}
 
@@ -937,19 +963,20 @@ func ConvertQuoteToSale(quoteID uint, warehouseID uint, userID uint) error {
 			return errors.New("bu teklif zaten satışa dönüştürülmüş")
 		}
 
-		// 1. Create the Sale
+		// 1. Create the Sale in "Hazırlanıyor" status
 		sale := models.Sale{
 			CustomerID: quote.CustomerID,
 			SaleDate:   time.Now(),
-			Note:       fmt.Sprintf("Teklif #%d üzerinden oluşturuldu. %s", quote.ID, quote.Note),
+			Note:       fmt.Sprintf("Teklif #%s üzerinden oluşturuldu. %s", quote.QuoteNumber, quote.Note),
 			TotalPrice: quote.TotalPrice,
 			UserID:     userID,
+			Status:     "Hazırlanıyor",
 		}
 		if err := tx.Create(&sale).Error; err != nil {
 			return err
 		}
 
-		// 2. Create Sale Items and Process Stock
+		// 2. Create Sale Items (Warehouse is selected during conversion)
 		for _, qItem := range quote.Items {
 			saleItem := models.SaleItem{
 				SaleID:      sale.ID,
@@ -962,33 +989,6 @@ func ConvertQuoteToSale(quoteID uint, warehouseID uint, userID uint) error {
 			if err := tx.Create(&saleItem).Error; err != nil {
 				return err
 			}
-
-			// Stock processing logic (similar to PerformSale but integrated here)
-			var stock models.Stock
-			if err := tx.Where("warehouse_id = ? AND product_id = ?", warehouseID, qItem.ProductID).First(&stock).Error; err != nil {
-				return errors.New("stok kaydı bulunamadı")
-			}
-
-			if stock.Quantity < qItem.Quantity {
-				return errors.New("yetersiz stok")
-			}
-
-			oldQty := stock.Quantity
-			stock.Quantity -= qItem.Quantity
-			tx.Model(&models.Stock{}).Where("warehouse_id = ? AND product_id = ?", warehouseID, qItem.ProductID).Update("quantity", stock.Quantity)
-
-			// Movement log
-			tx.Create(&models.StockMovement{
-				ProductID:       qItem.ProductID,
-				FromWarehouseID: &warehouseID,
-				Quantity:        qItem.Quantity,
-				Type:            "Satış (Tekliften)",
-				OldQuantity:     oldQty,
-				NewQuantity:     stock.Quantity,
-				CustomerID:      &quote.CustomerID,
-				UserID:          userID,
-				Timestamp:       time.Now(),
-			})
 		}
 
 		// 3. Update Quote Status

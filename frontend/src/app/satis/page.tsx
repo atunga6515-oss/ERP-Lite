@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ShoppingCart, Plus, Users, Trash2, Package, CheckCircle, Search } from "lucide-react";
+import { ShoppingCart, Plus, Users, Trash2, Package, CheckCircle, Search, Truck, Clock, AlertTriangle } from "lucide-react";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
@@ -45,11 +45,6 @@ export default function Satis() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // When warehouse changes, clear selected product
-  useEffect(() => {
-    setSelectedProductId("");
-  }, [selectedWarehouseId]);
-
   const fetchData = async () => {
     try {
       const [pRes, wRes, cRes, sRes, salesRes] = await Promise.all([
@@ -65,13 +60,18 @@ export default function Satis() {
       setStocks(sRes.data || []);
       setSales(salesRes.data || []);
     } catch (err) {
-      console.error(err);
+      console.error("Veri çekme hatası:", err);
     }
   };
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // When warehouse changes, clear selected product
+  useEffect(() => {
+    setSelectedProductId("");
+  }, [selectedWarehouseId]);
 
   const addToBasket = () => {
     if (!selectedProductId || !selectedWarehouseId || !itemQuantity || !itemUnitPrice) {
@@ -91,7 +91,7 @@ export default function Satis() {
     const requested = Math.floor(Number(itemQuantity));
 
     if (requested + alreadyInBasket > available) {
-      alert(`Yetersiz Stok! Bu depoda toplam ${available} adet var. Sepetinizde zaten ${alreadyInBasket} adet var. En fazla ${available - alreadyInBasket} adet daha ekleyebilirsiniz.`);
+      alert(`Yetersiz Stok! Bu depoda toplam ${available} adet var. Sepetinizde zaten ${alreadyInBasket} adet var.`);
       return;
     }
 
@@ -101,14 +101,12 @@ export default function Satis() {
       product_barcode: product?.barcode,
       warehouse_id: Number(selectedWarehouseId),
       warehouse_name: warehouse?.name,
-      quantity: Math.floor(Number(itemQuantity)), 
+      quantity: requested, 
       unit_price: Number(itemUnitPrice),
-      total_price: Math.floor(Number(itemQuantity)) * Number(itemUnitPrice)
+      total_price: requested * Number(itemUnitPrice)
     };
 
     setBasket([...basket, newItem]);
-    
-    // Clear selection
     setSelectedProductId("");
     setItemQuantity("1");
     setItemUnitPrice("1");
@@ -154,7 +152,7 @@ export default function Satis() {
         sale_date: new Date().toISOString()
       });
       
-      setMessage({ type: "success", text: "Satış başarıyla gerçekleştirildi. Tüm ürünler stoktan düşüldü." });
+      setMessage({ type: "success", text: "Sipariş başarıyla oluşturuldu ve Sevkiyat Masası'na gönderildi!" });
       setBasket([]);
       setCustomerId("");
       setNote("");
@@ -168,17 +166,16 @@ export default function Satis() {
   };
 
   const handleDeleteSale = async (id: number) => {
-    if (!confirm("Bu satışı iptal etmek istediğinizden emin misiniz? Ürünler depoya geri yüklenecektir.")) return;
+    if (!confirm("Bu satışı iptal etmek istediğinizden emin misiniz? Stoklar geri yüklenecektir.")) return;
     
     setActionLoading(true);
     try {
       await axios.delete(`${API_URL}/sales/${id}`);
-      setMessage({ type: "success", text: "Satış iptal edildi ve stoklar depoya geri yüklendi." });
+      setMessage({ type: "success", text: "Satış iptal edildi." });
       fetchData();
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || "İptal işlemi başarısız.";
       setMessage({ type: "error", text: errorMsg });
-      alert(errorMsg);
     } finally {
       setActionLoading(false);
     }
@@ -189,56 +186,39 @@ export default function Satis() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20">
       {actionLoading && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center animate-in fade-in duration-300">
-          <div className="bg-white p-10 rounded-3xl shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full mx-4 border border-slate-100">
-            <div className="relative">
-              <div className="w-20 h-20 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-ping"></div>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-2 text-center">
-              <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">İşlem Yapılıyor</h3>
-              <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                Stok kartları güncelleniyor ve sevkiyat kayıtları işleniyor. <br />Lütfen bekleyiniz...
-              </p>
-            </div>
-            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-blue-600 h-full animate-pulse" style={{width: '80%'}}></div>
-            </div>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center">
+          <div className="bg-white p-10 rounded-3xl shadow-2xl flex flex-col items-center gap-4">
+            <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="font-bold text-slate-800 uppercase tracking-tight">İşlem Yapılıyor...</p>
           </div>
         </div>
       )}
+
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Satış / Sevkiyat Masası</h1>
-        
+        <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Satış & Sevkiyat Yönetimi</h1>
         <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
-          <DialogTrigger className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-md cursor-pointer transition-colors">
-              <Plus className="w-4 h-4" /> Yeni Müşteri Ekle
+          <DialogTrigger className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg transition-all active:scale-95">
+            <Plus className="w-4 h-4" /> Yeni Müşteri
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Müşteri Tanımla</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>Yeni Müşteri Tanımla</DialogTitle></DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Müşteri / Firma Adı</Label>
-                <Input value={newCustomerName} onChange={e => setNewCustomerName(e.target.value)} placeholder="Örn: ABC Tekstil Ltd. Şti." />
+                <Input value={newCustomerName} onChange={e => setNewCustomerName(e.target.value)} placeholder="Örn: ABC Ltd." />
               </div>
               <div className="space-y-2">
                 <Label>Telefon</Label>
                 <Input value={newCustomerPhone} onChange={e => setNewCustomerPhone(e.target.value)} placeholder="05xx..." />
               </div>
-              <Button onClick={handleAddCustomer} className="w-full">Müşteriyi Kaydet</Button>
+              <Button onClick={handleAddCustomer} className="w-full bg-blue-600">Kaydet</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
       {message && (
-        <Alert variant={message.type === "error" ? "destructive" : "default"} className={message.type === "success" ? "border-green-500 text-green-700 bg-green-50 shadow-sm" : ""}>
+        <Alert variant={message.type === "error" ? "destructive" : "default"} className={message.type === "success" ? "border-green-500 bg-green-50 text-green-700" : ""}>
           <CheckCircle className="w-4 h-4" />
           <AlertTitle>{message.type === "error" ? "Hata" : "Başarılı"}</AlertTitle>
           <AlertDescription>{message.text}</AlertDescription>
@@ -246,98 +226,84 @@ export default function Satis() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Sol Panel: Basket and Product Selection */}
         <div className="lg:col-span-8 space-y-6">
-          <Card className="border-t-4 border-t-blue-600 shadow-md">
-            <CardHeader className="bg-gray-50 border-b py-4">
+          <Card className="border-t-4 border-t-blue-600 shadow-md !overflow-visible">
+            <CardHeader className="bg-slate-50 py-4 border-b">
               <CardTitle className="text-lg flex items-center gap-2">
-                <Package className="w-5 h-5 text-blue-600" />
-                Ürün Seç ve Sepete Ekle
+                <Package className="w-5 h-5 text-blue-600" /> Ürün Seç ve Sepete Ekle
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 !overflow-visible">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-gray-600 uppercase">1. Sevkiyat Deposu</Label>
+                  <Label className="text-xs font-bold text-slate-500 uppercase">1. Depo</Label>
                   <select 
-                    className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600"
+                    className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 transition-all"
                     value={selectedWarehouseId}
                     onChange={e => setSelectedWarehouseId(e.target.value)}
                   >
-                    <option value="">Depo Seçiniz...</option>
+                    <option value="">Seçiniz...</option>
                     {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
                 </div>
+
                 <div className="space-y-2 relative">
-                  <Label className="text-xs font-bold text-gray-600 uppercase">2. Ürün Seçimi</Label>
+                  <Label className="text-xs font-bold text-slate-500 uppercase">2. Ürün</Label>
                   <div 
-                    className={`flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm ${!selectedWarehouseId ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-blue-400'} transition-all`}
+                    className={`flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm ${!selectedWarehouseId ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-blue-500'} transition-all`}
                     onClick={() => selectedWarehouseId && setIsSearchOpen(!isSearchOpen)}
                   >
-                    <span className={`font-bold truncate whitespace-nowrap max-w-[200px] ${selectedProductId ? "text-slate-900" : "text-slate-400"}`}>
-                      {!selectedWarehouseId 
-                        ? "Önce Depo Seçin"
-                        : (selectedProductId 
-                            ? products.find(p => String(p.id) === selectedProductId)?.name || "Seçiniz..."
-                            : "Ürün Seçiniz...")
+                    <span className={`font-bold truncate ${selectedProductId ? "text-slate-900" : "text-slate-400"}`}>
+                      {selectedProductId 
+                        ? products.find(p => String(p.id) === selectedProductId)?.name || "Seçiniz..."
+                        : "Ürün Ara..."
                       }
                     </span>
-                    <Search className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+                    <Search className="w-4 h-4 text-slate-400" />
                   </div>
 
                   {isSearchOpen && selectedWarehouseId && (
-                    <div className="absolute z-50 w-[300px] mt-2 bg-white border border-slate-200 rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                      <div className="p-2 border-b bg-slate-50">
+                    <div className="absolute z-50 w-full min-w-[300px] mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="p-3 border-b bg-slate-50 flex items-center gap-2">
+                        <Search className="w-4 h-4 text-slate-400" />
                         <Input 
                           placeholder="Ürün adı veya barkod..." 
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           autoFocus
-                          className="h-8 text-xs"
+                          className="h-8 text-xs border-none bg-transparent focus-visible:ring-0 p-0 shadow-none"
                         />
                       </div>
-                      <div className="max-h-[350px] overflow-y-auto p-2 grid grid-cols-1 md:grid-cols-2 gap-2 bg-slate-50/50">
+                      <div className="max-h-[300px] overflow-y-auto custom-scrollbar bg-white">
                         {products
-                          .filter(p => {
-                            const warehouse = warehouses.find(w => String(w.id) === selectedWarehouseId);
-                            const isProductionWarehouse = warehouse?.name?.toLowerCase().includes("üretim");
-                            const isProducedProduct = p.barcode?.startsWith("ALP");
-                            if (isProductionWarehouse) return isProducedProduct;
-                            return !isProducedProduct;
-                          })
-                          .filter(p => {
-                            const s = stocks.find(st => String(st.warehouse_id) === selectedWarehouseId && st.product_id === p.id);
-                            return s && s.quantity > 0;
-                          })
                           .filter(p => 
                             p.name.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR")) || 
                             p.barcode.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR"))
                           )
                           .map(p => {
                             const s = stocks.find(st => String(st.warehouse_id) === selectedWarehouseId && st.product_id === p.id);
-                            const isSelected = String(p.id) === selectedProductId;
+                            const currentQty = s ? s.quantity : 0;
                             return (
                               <div 
                                 key={p.id}
-                                className={`flex flex-col p-2.5 border rounded-xl transition-all cursor-pointer group hover:shadow-md ${
-                                  isSelected 
-                                  ? 'bg-blue-600 border-blue-600 text-white shadow-blue-100' 
-                                  : 'bg-white border-slate-200 hover:border-blue-400'
-                                }`}
+                                className="flex items-center justify-between p-3 border-b border-slate-50 hover:bg-blue-50 cursor-pointer"
                                 onClick={() => {
                                   setSelectedProductId(String(p.id));
                                   setIsSearchOpen(false);
                                   setSearchTerm("");
+                                  if (p.sale_price) setItemUnitPrice(String(p.sale_price));
                                 }}
                               >
-                                <div className="flex justify-between items-start mb-0.5">
-                                  <span className={`text-[8px] font-mono ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
-                                    {p.barcode}
-                                  </span>
-                                  <span className={`text-[8px] font-bold ${isSelected ? 'text-white' : 'text-green-600'}`}>
-                                    Mevcut: {s?.quantity}
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-sm text-slate-800">{p.name}</span>
+                                  <span className="text-[10px] text-slate-400 font-mono">{p.barcode}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className={`text-xs font-black ${currentQty > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                    Stok: {currentQty}
                                   </span>
                                 </div>
-                                <span className="font-bold text-[10px] leading-tight line-clamp-2">{p.name}</span>
                               </div>
                             );
                           })
@@ -348,28 +314,15 @@ export default function Satis() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-gray-600 uppercase">Miktar (Tam Sayı)</Label>
-                  <Input 
-                    type="number" min="1" step="1"
-                    value={itemQuantity} 
-                    onChange={e => setItemQuantity(e.target.value)}
-                    className="h-10"
-                  />
+                  <Label className="text-xs font-bold text-slate-500 uppercase">Miktar</Label>
+                  <Input type="number" min="1" value={itemQuantity} onChange={e => setItemQuantity(e.target.value)} className="h-10 font-bold" />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-gray-600 uppercase">Birim Fiyat (₺)</Label>
+                  <Label className="text-xs font-bold text-slate-500 uppercase">Birim Fiyat</Label>
                   <div className="flex gap-2">
-                    <Input 
-                      type="number" min="0" step="0.01"
-                      value={itemUnitPrice} 
-                      onChange={e => setItemUnitPrice(e.target.value)}
-                      placeholder="0.00"
-                      className="h-10"
-                    />
-                    <Button onClick={addToBasket} className="bg-blue-600 hover:bg-blue-700 h-10 px-4">
-                      Ekle
-                    </Button>
+                    <Input type="number" value={itemUnitPrice} onChange={e => setItemUnitPrice(e.target.value)} className="h-10 font-bold" />
+                    <Button onClick={addToBasket} className="bg-blue-600 h-10 px-4">Ekle</Button>
                   </div>
                 </div>
               </div>
@@ -377,20 +330,18 @@ export default function Satis() {
           </Card>
 
           <Card className="shadow-md overflow-hidden">
-            <CardHeader className="bg-gray-50 border-b py-4">
+            <CardHeader className="bg-slate-50 py-4 border-b">
               <CardTitle className="text-lg flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-green-600" />
-                Satış Listesi (Sepet)
+                <ShoppingCart className="w-5 h-5 text-green-600" /> Sepet Listesi
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-slate-50/50">
                   <TableRow>
                     <TableHead>Ürün Bilgisi</TableHead>
                     <TableHead>Depo</TableHead>
                     <TableHead className="text-right">Miktar</TableHead>
-                    <TableHead className="text-right">Birim Fiyat</TableHead>
                     <TableHead className="text-right">Toplam</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
@@ -399,15 +350,14 @@ export default function Satis() {
                   {basket.map((item, idx) => (
                     <TableRow key={idx}>
                       <TableCell>
-                        <p className="font-bold">{item.product_name}</p>
-                        <p className="text-xs text-muted-foreground">{item.product_barcode}</p>
+                        <p className="font-bold text-sm leading-tight">{item.product_name}</p>
+                        <p className="text-[10px] text-slate-400">{item.product_barcode}</p>
                       </TableCell>
-                      <TableCell>{item.warehouse_name}</TableCell>
-                      <TableCell className="text-right font-bold">{item.quantity} Adet</TableCell>
-                      <TableCell className="text-right">{item.unit_price.toLocaleString('tr-TR')} ₺</TableCell>
-                      <TableCell className="text-right font-bold text-green-700">{item.total_price.toLocaleString('tr-TR')} ₺</TableCell>
+                      <TableCell className="text-xs font-medium">{item.warehouse_name}</TableCell>
+                      <TableCell className="text-right font-bold text-sm">{item.quantity} Adet</TableCell>
+                      <TableCell className="text-right font-black text-blue-700">{item.total_price.toLocaleString('tr-TR')} ₺</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => removeFromBasket(idx)} className="text-red-500">
+                        <Button variant="ghost" size="icon" onClick={() => removeFromBasket(idx)} className="text-red-500 hover:bg-red-50">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </TableCell>
@@ -415,9 +365,7 @@ export default function Satis() {
                   ))}
                   {basket.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12 text-muted-foreground italic">
-                        Sepetiniz boş. Üst kısımdan ürün ekleyebilirsiniz.
-                      </TableCell>
+                      <TableCell colSpan={5} className="text-center py-10 text-slate-400 italic text-sm">Sepetiniz boş.</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -426,140 +374,118 @@ export default function Satis() {
           </Card>
         </div>
 
+        {/* Sağ Panel: Summary and Confirm */}
         <div className="lg:col-span-4 space-y-6">
-          <Card className="border-t-4 border-t-green-600 shadow-lg sticky top-6">
+          <Card className="border-t-4 border-t-green-600 shadow-xl sticky top-6">
             <CardHeader className="bg-slate-50 border-b">
               <CardTitle className="text-lg">Satışı Onayla</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
               <div className="space-y-2">
-                <Label className="text-sm font-bold text-gray-700">Müşteri / Firma</Label>
+                <Label className="text-sm font-bold">Müşteri / Firma</Label>
                 <select 
-                  className="flex h-11 w-full rounded-md border border-input bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-green-600"
+                  className="flex h-11 w-full rounded-md border border-input bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-green-600 transition-all"
                   value={customerId}
                   onChange={e => setCustomerId(e.target.value)}
                 >
-                  <option value="">Lütfen Müşteri Seçin...</option>
+                  <option value="">Müşteri Seçiniz...</option>
                   {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-bold text-gray-700">Genel Açıklama</Label>
-                <Input 
-                  value={note} onChange={e => setNote(e.target.value)} 
-                  placeholder="Sipariş no, sevkiyat detayları vb."
-                  className="h-11"
-                />
+                <Label className="text-sm font-bold">Genel Not</Label>
+                <Input value={note} onChange={e => setNote(e.target.value)} placeholder="Açıklama..." className="h-11" />
               </div>
 
-              <div className="bg-slate-900 text-white p-6 rounded-xl space-y-4 shadow-xl">
-                <div className="flex justify-between items-center border-b border-slate-700 pb-3">
-                  <span className="text-slate-400 text-sm">Ürün Kalemi</span>
-                  <span className="font-bold">{basket.length} Adet</span>
+              <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-inner space-y-4">
+                <div className="flex justify-between items-end">
+                  <span className="text-slate-400 text-sm font-bold">GENEL TOPLAM</span>
+                  <span className="text-3xl font-black text-green-400">{totalBasketAmount.toLocaleString('tr-TR')} ₺</span>
                 </div>
-                <div className="flex justify-between items-end pt-2">
-                  <span className="text-slate-400 text-sm mb-1">Genel Toplam</span>
-                  <span className="text-3xl font-black text-green-400">
-                    {totalBasketAmount.toLocaleString('tr-TR')} ₺
-                  </span>
-                </div>
-                
                 <Button 
                   onClick={handleSale} 
                   disabled={loading || !customerId || basket.length === 0}
-                  className="w-full bg-green-500 hover:bg-green-600 text-slate-900 h-14 text-xl font-black mt-4 transition-all active:scale-95"
+                  className={`w-full h-14 font-black text-sm uppercase tracking-tighter rounded-xl transition-all ${
+                    basket.length > 0 && !customerId 
+                    ? "bg-amber-500 hover:bg-amber-600 text-slate-900 border-2 border-amber-400" 
+                    : "bg-green-500 hover:bg-green-600 text-slate-900"
+                  }`}
                 >
-                  {loading ? "Tamamlanıyor..." : "SATIŞI TAMAMLA"}
+                  {loading ? "GÖNDERİLİYOR..." : 
+                   (basket.length > 0 && !customerId) ? "MÜŞTERİ SEÇİMİ BEKLENİYOR" : 
+                   "SİPARİŞİ OLUŞTUR & SEVKİYATA GÖNDER"}
                 </Button>
-              </div>
-
-              <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                <div className="bg-blue-100 p-2 rounded-full">
-                  <Users className="w-4 h-4 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-[11px] text-blue-700 font-bold uppercase">Müşteri Rehberi</p>
-                  <p className="text-xs text-blue-900">{customers.length} kayıtlı müşteri bulunuyor.</p>
-                </div>
+                {basket.length > 0 && !customerId && (
+                  <div className="flex items-center justify-center gap-2 mt-2 py-1 px-3 bg-amber-400/10 border border-amber-400/20 rounded-lg animate-pulse">
+                    <AlertTriangle className="w-4 h-4 text-amber-400" />
+                    <span className="text-[10px] text-amber-400 font-black tracking-widest uppercase">Lütfen önce yukarıdan müşteri seçiniz!</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Satış Geçmişi Listesi */}
+      {/* Geçmiş Tablosu */}
       <Card className="shadow-xl border-t-4 border-t-slate-800">
-        <CardHeader className="bg-slate-50 border-b flex flex-row items-center justify-between py-4">
-          <div>
-            <CardTitle className="text-xl font-black text-slate-800 flex items-center gap-2 uppercase tracking-tight">
-              <ShoppingCart className="w-6 h-6 text-blue-600" />
-              Satış ve Sevkiyat Geçmişi
-            </CardTitle>
-            <p className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-widest">Son Gerçekleşen İşlemler</p>
-          </div>
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200">
-            Toplam {sales.length} Kayıt
-          </Badge>
+        <CardHeader className="bg-slate-50 border-b py-4 flex flex-row justify-between items-center">
+          <CardTitle className="text-xl font-black text-slate-800 flex items-center gap-2 uppercase">
+            <Clock className="w-6 h-6 text-blue-600" /> Satış Geçmişi
+          </CardTitle>
+          <Badge className="bg-blue-100 text-blue-700 font-bold border-blue-200">Toplam {sales.length} Kayıt</Badge>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow>
-                <TableHead className="w-[120px] font-bold">Satış No</TableHead>
+                <TableHead className="font-bold">No</TableHead>
                 <TableHead className="font-bold">Müşteri</TableHead>
-                <TableHead className="font-bold">Tarih</TableHead>
                 <TableHead className="font-bold">Ürünler</TableHead>
+                <TableHead className="font-bold">Durum</TableHead>
                 <TableHead className="text-right font-bold">Toplam Tutar</TableHead>
-                <TableHead className="text-right font-bold w-[100px]">Aksiyon</TableHead>
+                <TableHead className="text-right w-[100px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sales.map((sale) => (
                 <TableRow key={sale.id} className="hover:bg-slate-50 transition-colors group">
-                  <TableCell className="font-mono font-bold text-slate-500">SAL-{sale.id.toString().padStart(5, '0')}</TableCell>
+                  <TableCell className="font-mono font-bold text-slate-400 text-xs">#SAL-{sale.id}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-bold text-slate-800">{sale.customer?.name}</span>
-                      <span className="text-[10px] text-slate-400 font-medium italic">{sale.note || "Açıklama yok"}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-xs font-semibold text-slate-600">
-                    {new Date(sale.created_at).toLocaleString('tr-TR')}
+                    <p className="font-bold text-slate-800 leading-tight">{sale.customer?.name}</p>
+                    <p className="text-[10px] text-slate-400 italic truncate max-w-[200px]">{sale.note}</p>
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-col gap-1">
-                      {sale.items?.slice(0, 2).map((item: any, idx: number) => (
-                        <div key={idx} className="flex items-center gap-2 text-[11px] font-medium text-slate-600">
+                    <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto scrollbar-thin">
+                      {sale.items?.map((item: any, i: number) => (
+                        <div key={i} className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
                           <Package className="w-3 h-3 text-blue-400" />
-                          <span>{item.product?.name} ({item.quantity} {item.product?.unit})</span>
+                          <span>{item.product?.name} ({item.quantity})</span>
                         </div>
                       ))}
-                      {sale.items?.length > 2 && (
-                        <span className="text-[10px] text-blue-500 font-black italic">...ve {sale.items.length - 2} ürün daha</span>
-                      )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right font-black text-slate-900">
-                    {sale.total_price.toLocaleString('tr-TR')} ₺
+                  <TableCell>
+                    <Badge className={
+                      sale.status === "Sevk Edildi" 
+                      ? "bg-green-100 text-green-700 hover:bg-green-100 border-green-200" 
+                      : "bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200"
+                    }>
+                      {sale.status === "Sevk Edildi" ? "SEVK EDİLDİ" : "HAZIRLANIYOR"}
+                    </Badge>
                   </TableCell>
+                  <TableCell className="text-right font-black text-slate-900">{sale.total_price.toLocaleString('tr-TR')} ₺</TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleDeleteSale(sale.id)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all font-bold text-[10px]"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 mr-1" /> İPTAL ET
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteSale(sale.id)} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all">
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
               ))}
               {sales.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-20 text-slate-400 italic">
-                    Henüz bir satış kaydı bulunmuyor.
-                  </TableCell>
+                  <TableCell colSpan={6} className="text-center py-20 text-slate-400 italic">Kayıt bulunamadı.</TableCell>
                 </TableRow>
               )}
             </TableBody>

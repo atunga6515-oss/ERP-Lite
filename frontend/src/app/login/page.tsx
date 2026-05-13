@@ -62,7 +62,7 @@ export default function LoginPage() {
               <ShieldCheck className="w-10 h-10 text-blue-500" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-black text-white tracking-tight">ERP LITE v1.2.0</CardTitle>
+          <CardTitle className="text-2xl font-black text-white tracking-tight">ERP LITE v1.3.0</CardTitle>
           <CardDescription className="text-slate-400">
             Sisteme devam etmek için giriş yapın.
           </CardDescription>

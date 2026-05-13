@@ -8,6 +8,10 @@ import (
 
 func Setup(app *fiber.App) {
 	api := app.Group("/api")
+	app.Get("/uploads/*", func(c *fiber.Ctx) error {
+		c.Set("Access-Control-Allow-Origin", "*")
+		return c.SendFile("./uploads/" + c.Params("*"))
+	})
 
 	// Auth
 	api.Post("/auth/login", handlers.Login)
@@ -65,6 +69,7 @@ func Setup(app *fiber.App) {
 	// Sales
 	api.Get("/sales", handlers.GetSales)
 	api.Post("/sales", handlers.CreateSale)
+	api.Post("/sales/:id/ship", handlers.ShipSale)
 	api.Delete("/sales/:id", handlers.CancelSale)
 	
 	// Suppliers
@@ -90,7 +95,9 @@ func Setup(app *fiber.App) {
 	
 	// Quotes
 	api.Get("/quotes", handlers.GetQuotes)
+	api.Get("/quotes/:id", handlers.GetQuote)
 	api.Post("/quotes", handlers.CreateQuote)
+	api.Put("/quotes/:id", handlers.UpdateQuote)
 	api.Put("/quotes/:id/status", handlers.UpdateQuoteStatus)
 	api.Post("/quotes/:id/convert", handlers.ConvertQuoteToSale)
 
@@ -100,4 +107,13 @@ func Setup(app *fiber.App) {
 	api.Put("/notifications/rules/:id", handlers.UpdateNotificationRule)
 	api.Delete("/notifications/rules/:id", handlers.DeleteNotificationRule)
 	api.Post("/notifications/rules/:id/test", handlers.TestNotificationRule)
+	
+	// Issuing Companies
+	api.Get("/issuing-companies", handlers.GetIssuingCompanies)
+	api.Post("/issuing-companies", handlers.CreateIssuingCompany)
+	api.Put("/issuing-companies/:id", handlers.UpdateIssuingCompany)
+	api.Delete("/issuing-companies/:id", handlers.DeleteIssuingCompany)
+
+	// Utils
+	api.Post("/upload", handlers.UploadImage)
 }

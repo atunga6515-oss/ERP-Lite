@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Users, Shield, Mail, Save, Plus, Trash2, Key, Clock, ShieldCheck, Send, Edit, BellRing, Info, Zap, LayoutGrid, Eye, EyeOff, ShoppingBag, Boxes, ClipboardList, Hammer, Truck } from "lucide-react";
+import { Settings, Users, Shield, Mail, Save, Plus, Trash2, Key, Clock, ShieldCheck, Send, Edit, BellRing, Info, Zap, LayoutGrid, Eye, EyeOff, ShoppingBag, Boxes, ClipboardList, Hammer, Truck, Building2, Phone, Globe, MapPin, Upload, X, Building, Image as ImageIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,7 +29,7 @@ const MENU_STRUCTURE = [
   {
     category: "Temel Tanımlar",
     menus: [
-      { id: "tanimlar", label: "Tanımlamalar (Ürün, Depo, Cari)" }
+      { id: "tanimlar", label: "Tanımlamalar (Ürün, Depo, Cari, Teklif Veren Şirketler)" }
     ]
   },
   {
@@ -63,7 +63,7 @@ const INITIAL_PERMISSIONS = MENU_STRUCTURE.flatMap(cat =>
 );
 
 const MODULE_LIST = [
-  { id: "tanimlar", label: "Tanımlamalar (Ürün, Depo, Müşteri, Tedarikçi)", icon: "📋", category: "Temel" },
+  { id: "tanimlar", label: "Tanımlamalar (Ürün, Depo, Müşteri, Tedarikçi, Teklif Veren Şirket)", icon: "📋", category: "Temel" },
   { id: "stok", label: "Depo & Stok Yönetimi", icon: "📦", category: "Temel" },
   { id: "satinalma", label: "Satınalma Yönetimi", icon: "🛒", category: "Operasyonlar" },
   { id: "teklif", label: "Teklif Yönetimi", icon: "📄", category: "Operasyonlar" },
@@ -108,6 +108,15 @@ export default function AdminPage() {
   const [editRule, setEditRule] = useState<any>(null);
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false);
 
+  // Issuing Companies State
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<any>(null);
+  const [companyFormData, setCompanyFormData] = useState({
+    name: "", address: "", phone: "", email: "", web: "", logo_path: ""
+  });
+  const [uploading, setUploading] = useState(false);
+
   const fetchData = async () => {
     setLoading(true);
     // Settings
@@ -139,6 +148,12 @@ export default function AdminPage() {
     } catch (err) {
       console.error("Notification rules load failed", err);
     }
+
+    // Issuing Companies
+    try {
+      const res = await axios.get(`${API_URL}/issuing-companies`);
+      setCompanies(res.data || []);
+    } catch (err) {}
     setLoading(false);
   };
 
@@ -238,6 +253,47 @@ export default function AdminPage() {
     }
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const uploadData = new FormData();
+    uploadData.append("image", file);
+    try {
+      const res = await axios.post(`${API_URL}/upload`, uploadData);
+      setCompanyFormData({ ...companyFormData, logo_path: res.data.path });
+    } catch (err) {
+      alert("Logo yüklenemedi.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCompanySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingCompany) {
+        await axios.put(`${API_URL}/issuing-companies/${editingCompany.id}`, companyFormData);
+      } else {
+        await axios.post(`${API_URL}/issuing-companies`, companyFormData);
+      }
+      setModalOpen(false);
+      fetchData();
+    } catch (err) {
+      alert("Hata oluştu.");
+    }
+  };
+
+  const handleCompanyDelete = async (id: number) => {
+    if (!confirm("Bu şirketi silmek istediğinize emin misiniz?")) return;
+    try {
+      await axios.delete(`${API_URL}/issuing-companies/${id}`);
+      fetchData();
+    } catch (err) {
+      alert("Silme hatası.");
+    }
+  };
+
   const handleTestRule = async (rule: any) => {
     try {
       setLoading(true);
@@ -327,7 +383,7 @@ export default function AdminPage() {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Sistem Yönetim Merkezi</h1>
-        <p className="text-slate-500 mt-1">v1.2.0 Güvenlik ve Altyapı Ayarları</p>
+        <p className="text-slate-500 mt-1">v1.3.0 Güvenlik ve Altyapı Ayarları</p>
       </div>
 
       <Tabs defaultValue="users" className="space-y-4">
@@ -336,6 +392,7 @@ export default function AdminPage() {
           <TabsTrigger value="modules" className="gap-2"><LayoutGrid className="w-4 h-4" /> Modül Yönetimi</TabsTrigger>
           <TabsTrigger value="general" className="gap-2"><Settings className="w-4 h-4" /> Genel Ayarlar</TabsTrigger>
           <TabsTrigger value="smtp" className="gap-2"><Mail className="w-4 h-4" /> SMTP (E-posta)</TabsTrigger>
+          <TabsTrigger value="issuing" className="gap-2"><Building2 className="w-4 h-4" /> Teklif Veren Şirketler</TabsTrigger>
           <TabsTrigger value="notifications" className="gap-2"><BellRing className="w-4 h-4" /> Bildirim Ayarları</TabsTrigger>
           <TabsTrigger value="security" className="gap-2"><Shield className="w-4 h-4" /> Güvenlik</TabsTrigger>
         </TabsList>
@@ -554,21 +611,52 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {loading && <div className="text-center py-4 text-blue-600">Yükleniyor...</div>}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label>Şirket Adı</Label>
+                  <Label className="text-xs font-bold text-slate-500 uppercase">Şirket Adı</Label>
                   <div className="flex gap-2">
-                    <Input key={`cn-${settings.company_name || 'empty'}`} defaultValue={settings.company_name || ""} id="company_name" />
-                    <Button onClick={() => handleSettingSave("company_name", (document.getElementById("company_name") as HTMLInputElement).value)}>
+                    <Input key={`cn-${settings.company_name}`} defaultValue={settings.company_name || ""} id="company_name" className="h-11 rounded-xl font-bold border-slate-200" />
+                    <Button onClick={() => handleSettingSave("company_name", (document.getElementById("company_name") as HTMLInputElement).value)} className="rounded-xl h-11 px-4">
                       <Save className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Şirket Logosu (URL)</Label>
+                  <Label className="text-xs font-bold text-slate-500 uppercase">Şirket Logosu (Görsel URL)</Label>
                   <div className="flex gap-2">
-                    <Input key={`cl-${settings.company_logo || 'empty'}`} defaultValue={settings.company_logo || ""} id="company_logo" />
-                    <Button onClick={() => handleSettingSave("company_logo", (document.getElementById("company_logo") as HTMLInputElement).value)}>
+                    <Input key={`cl-${settings.company_logo}`} defaultValue={settings.company_logo || ""} id="company_logo" placeholder="https://logo.url" className="h-11 rounded-xl font-bold border-slate-200" />
+                    <Button onClick={() => handleSettingSave("company_logo", (document.getElementById("company_logo") as HTMLInputElement).value)} className="rounded-xl h-11 px-4">
+                      <Save className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-slate-500 uppercase">Şirket Adresi</Label>
+                <div className="flex gap-2">
+                  <Input key={`ca-${settings.company_address}`} defaultValue={settings.company_address || ""} id="company_address" className="h-11 rounded-xl font-bold border-slate-200" />
+                  <Button onClick={() => handleSettingSave("company_address", (document.getElementById("company_address") as HTMLInputElement).value)} className="rounded-xl h-11 px-4">
+                    <Save className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-500 uppercase">Telefon</Label>
+                  <div className="flex gap-2">
+                    <Input key={`cp-${settings.company_phone}`} defaultValue={settings.company_phone || ""} id="company_phone" className="h-11 rounded-xl font-bold border-slate-200" />
+                    <Button onClick={() => handleSettingSave("company_phone", (document.getElementById("company_phone") as HTMLInputElement).value)} className="rounded-xl h-11 px-4">
+                      <Save className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-500 uppercase">Web Sitesi</Label>
+                  <div className="flex gap-2">
+                    <Input key={`cw-${settings.company_website}`} defaultValue={settings.company_website || ""} id="company_website" className="h-11 rounded-xl font-bold border-slate-200" />
+                    <Button onClick={() => handleSettingSave("company_website", (document.getElementById("company_website") as HTMLInputElement).value)} className="rounded-xl h-11 px-4">
                       <Save className="w-4 h-4" />
                     </Button>
                   </div>
@@ -656,6 +744,84 @@ export default function AdminPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Teklif Veren Şirketler */}
+        <TabsContent value="issuing">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-xl font-black text-slate-800">Teklif Veren Şirketler</h2>
+              <p className="text-sm text-slate-500 font-medium">Teklif formunda seçilecek firma bilgilerini yönetin.</p>
+            </div>
+            <Button onClick={() => { setEditingCompany(null); setCompanyFormData({ name: "", address: "", phone: "", email: "", web: "", logo_path: "" }); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 font-bold gap-2">
+              <Plus className="w-4 h-4" /> YENİ ŞİRKET EKLE
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {companies.map((company) => (
+              <Card key={company.id} className="rounded-2xl border-none shadow-lg overflow-hidden group">
+                <CardHeader className="p-4 bg-slate-50 flex flex-row items-center justify-between border-b">
+                   <div className="flex items-center gap-3">
+                      {company.logo_path ? (
+                        <img src={`http://${window.location.hostname}:8080/${company.logo_path}`} className="h-10 w-10 object-contain" />
+                      ) : (
+                        <Building2 className="w-8 h-8 text-slate-300" />
+                      )}
+                      <span className="font-bold text-slate-800">{company.name}</span>
+                   </div>
+                   <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => { 
+                        setEditingCompany(company); 
+                        setCompanyFormData({ 
+                          name: company.name, 
+                          address: company.address, 
+                          phone: company.phone, 
+                          email: company.email, 
+                          web: company.web, 
+                          logo_path: company.logo_path 
+                        }); 
+                        setModalOpen(true); 
+                      }} className="h-8 w-8 text-blue-600"><Edit className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleCompanyDelete(company.id)} className="h-8 w-8 text-red-600"><Trash2 className="w-4 h-4" /></Button>
+                   </div>
+                </CardHeader>
+                <CardContent className="p-4 grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-slate-500"><Phone size={12}/> {company.phone || "-"}</div>
+                    <div className="flex items-center gap-2 text-slate-500"><Mail size={12}/> {company.email || "-"}</div>
+                    <div className="col-span-2 flex items-center gap-2 text-slate-500 pt-2 border-t mt-2"><MapPin size={12}/> {company.address || "-"}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>{editingCompany ? "Şirketi Düzenle" : "Yeni Şirket Ekle"}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleCompanySubmit} className="space-y-4 py-4">
+                <div className="flex flex-col items-center gap-2 mb-4">
+                    <div className="relative group cursor-pointer" onClick={() => document.getElementById('admin-logo-upload')?.click()}>
+                        <div className="w-20 h-20 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
+                            {uploading ? <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div> : 
+                             companyFormData.logo_path ? <img src={`http://${window.location.hostname}:8080/${companyFormData.logo_path}`} className="w-full h-full object-contain" /> : <ImageIcon className="w-6 h-6 text-slate-300" />}
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center text-white"><Upload size={12}/></div>
+                    </div>
+                    <input id="admin-logo-upload" type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label>Firma Adı</Label><Input required value={companyFormData.name} onChange={e => setCompanyFormData({...companyFormData, name: e.target.value})} /></div>
+                  <div className="space-y-2"><Label>Telefon</Label><Input value={companyFormData.phone} onChange={e => setCompanyFormData({...companyFormData, phone: e.target.value})} /></div>
+                  <div className="space-y-2"><Label>E-posta</Label><Input value={companyFormData.email} onChange={e => setCompanyFormData({...companyFormData, email: e.target.value})} /></div>
+                  <div className="space-y-2"><Label>Web</Label><Input value={companyFormData.web} onChange={e => setCompanyFormData({...companyFormData, web: e.target.value})} /></div>
+                  <div className="col-span-2 space-y-2"><Label>Adres</Label><Textarea value={companyFormData.address} onChange={e => setCompanyFormData({...companyFormData, address: e.target.value})} /></div>
+                </div>
+                <Button type="submit" className="w-full bg-blue-600 h-12 font-bold">{editingCompany ? "GÜNCELLE" : "KAYDET"}</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Bildirim Ayarları */}
