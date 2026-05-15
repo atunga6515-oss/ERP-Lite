@@ -5,7 +5,7 @@ import axios from "axios";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, AlertTriangle, Activity, ArrowUpDown, ArrowUp, ArrowDown, ShoppingBag, Send, Clock, Hammer, PlayCircle, CheckCircle2, Truck } from "lucide-react";
+import { Package, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, ShoppingBag, Send, Clock, Hammer, PlayCircle, CheckCircle2, Truck } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";

@@ -9,13 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Product, Warehouse, Stock } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function StokIslemleri() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [warehouses, setWarehouses] = useState<any[]>([]);
-  const [stocks, setStocks] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [stocks, setStocks] = useState<Stock[]>([]);
   const [type, setType] = useState("Giriş");
   const [globalNote, setGlobalNote] = useState("");
   const [fromWarehouseId, setFromWarehouseId] = useState("");
@@ -84,7 +85,7 @@ export default function StokIslemleri() {
       return;
     }
 
-    const payload = selectedProductIds.map(id => {
+    const payload = selectedProductIds.map((id: string) => {
       const pId = Number(id);
       const req: any = {
         product_id: pId,
@@ -120,32 +121,32 @@ export default function StokIslemleri() {
 
   if (type === "Çıkış" || type === "Transfer") {
     if (fromWarehouseId) {
-      const availableStocks = stocks.filter(s => String(s.warehouse_id) === fromWarehouseId && s.quantity > 0);
-      const availableProductIds = availableStocks.map(s => s.product_id);
-      displayProducts = products.filter(p => availableProductIds.includes(p.id)).map(p => {
-        const s = availableStocks.find(s => s.product_id === p.id);
+      const availableStocks = stocks.filter((s: Stock) => String(s.warehouse_id) === fromWarehouseId && (s.quantity || 0) > 0);
+      const availableProductIds = availableStocks.map((s: Stock) => s.product_id);
+      displayProducts = products.filter((p: Product) => availableProductIds.includes(p.id)).map((p: Product) => {
+        const s = availableStocks.find((s: Stock) => s.product_id === p.id);
         return { ...p, currentStock: s ? s.quantity : 0 };
       });
     }
   } else if (type === "Giriş") {
-    displayProducts = products.map(p => {
+    displayProducts = products.map((p: Product) => {
       let currentStock = 0;
       if (toWarehouseId) {
-        const s = stocks.find(s => String(s.warehouse_id) === toWarehouseId && s.product_id === p.id);
+        const s = stocks.find((s: Stock) => String(s.warehouse_id) === toWarehouseId && s.product_id === p.id);
         if (s) currentStock = s.quantity;
       }
       return { ...p, currentStock };
     });
   }
 
-  let filteredProducts = displayProducts.filter(p => 
+  let filteredProducts = displayProducts.filter((p: any) => 
     p.name.toLowerCase().includes(search.toLowerCase()) || 
     p.barcode.includes(search) || 
     p.category?.toLowerCase().includes(search.toLowerCase())
   );
 
   if (showCriticalOnly) {
-    filteredProducts = filteredProducts.filter(p => p.currentStock <= p.min_stock_level);
+    filteredProducts = filteredProducts.filter((p: any) => (p.currentStock || 0) <= (p.min_stock_level || 0));
   }
 
   return (
@@ -161,7 +162,7 @@ export default function StokIslemleri() {
             <div className="flex flex-col gap-2">
               <Label>İşlem Türü</Label>
               <div className="flex flex-wrap gap-2">
-                {["Giriş", "Çıkış", "Transfer"].map(t => (
+                {["Giriş", "Çıkış", "Transfer"].map((t: string) => (
                   <Button 
                     key={t} 
                     variant={type === t ? "default" : "outline"}
@@ -265,7 +266,7 @@ export default function StokIslemleri() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProducts.map(p => {
+                  {filteredProducts.map((p: any) => {
                     const isSelected = selectedItems[p.id] !== undefined;
                     return (
                       <TableRow key={p.id} className={isSelected ? "bg-blue-50" : ""}>

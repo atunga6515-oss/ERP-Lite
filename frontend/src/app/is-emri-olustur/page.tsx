@@ -6,16 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Hammer, ClipboardList, AlertTriangle, ArrowLeft, CheckCircle, PackageSearch, PackageCheck, Search } from "lucide-react";
+import { Hammer, ArrowLeft, CheckCircle, PackageSearch, PackageCheck, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Product, Warehouse, Recipe } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function IsEmriOlustur() {
   const router = useRouter();
-  const [products, setProducts] = useState<any[]>([]);
-  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   
   // Form State
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -41,8 +42,8 @@ export default function IsEmriOlustur() {
         const allProducts = pRes.data || [];
         const allRecipes = rRes.data || [];
         
-        const producibleProducts = allProducts.filter((p: any) => 
-          allRecipes.some((r: any) => r.product_id === p.id)
+        const producibleProducts = allProducts.filter((p: Product) => 
+          allRecipes.some((r: Recipe) => r.product_id === p.id)
         );
         
         setProducts(producibleProducts);
@@ -150,7 +151,7 @@ export default function IsEmriOlustur() {
               >
                 <span className={selectedProductId ? "text-slate-900" : "text-slate-400"}>
                   {selectedProductId 
-                    ? products.find(p => String(p.id) === selectedProductId)?.name || "Seçiniz..."
+                    ? products.find((p: Product) => String(p.id) === selectedProductId)?.name || "Seçiniz..."
                     : "Mamul Seçiniz..."
                   }
                 </span>
@@ -170,11 +171,11 @@ export default function IsEmriOlustur() {
                   </div>
                   <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
                     {products
-                      .filter(p => 
+                      .filter((p: Product) => 
                         p.name.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) || 
                         p.barcode.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR'))
                       )
-                      .map(p => (
+                      .map((p: Product) => (
                         <div 
                           key={p.id}
                           className={`flex items-center justify-between p-3 border-b border-slate-50 transition-all cursor-pointer group hover:bg-purple-50/50 ${
@@ -203,7 +204,7 @@ export default function IsEmriOlustur() {
                         </div>
                       ))
                     }
-                    {products.filter(p => 
+                    {products.filter((p: Product) => 
                         p.name.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) || 
                         p.barcode.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR'))
                       ).length === 0 && (

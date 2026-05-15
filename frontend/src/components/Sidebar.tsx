@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { LayoutDashboard, Warehouse, Package, ArrowRightLeft, History, Boxes, Settings, FileBarChart, Hammer, BookOpen, ShoppingCart, Users, ChevronDown, ChevronRight, Truck, ShoppingBag, ClipboardList, Plus, LogOut } from "lucide-react";
+import { LayoutDashboard, Warehouse, Package, ArrowRightLeft, History, Boxes, Settings, FileBarChart, Hammer, BookOpen, ShoppingCart, Users, Truck, ShoppingBag, ClipboardList, Plus, LogOut } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { usePathname } from "next/navigation";
 
@@ -39,7 +39,7 @@ export function Sidebar() {
     fetchSettings();
   }, [pathname]);
 
-  const MenuHeader = ({ id, label, icon: Icon }: any) => {
+  const MenuHeader = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => {
     const isOpen = openMenus[id];
     return (
       <button 
@@ -63,7 +63,7 @@ export function Sidebar() {
     );
   };
 
-  const SubLink = ({ href, label, icon: Icon, colorClass = "" }: any) => {
+  const SubLink = ({ href, label, icon: Icon, colorClass = "" }: { href: string, label: string, icon: any, colorClass?: string }) => {
     const isActive = pathname === href;
     return (
       <Link 

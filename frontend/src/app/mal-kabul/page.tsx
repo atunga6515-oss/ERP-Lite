@@ -12,18 +12,19 @@ import { tr } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Purchase, PurchaseItem } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function MalKabul() {
-  const [purchases, setPurchases] = useState<any[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [receiptQtys, setReceiptQtys] = useState<Record<number, string>>({});
   const [message, setMessage] = useState<{type: "success" | "error", text: string} | null>(null);
 
   // Confirmation dialog state
-  const [confirmDialog, setConfirmDialog] = useState<{open: boolean, type: "receive" | "cancel", purchase: any | null}>({
+  const [confirmDialog, setConfirmDialog] = useState<{open: boolean, type: "receive" | "cancel", purchase: Purchase | null}>({
     open: false, type: "receive", purchase: null
   });
 
@@ -42,13 +43,13 @@ export default function MalKabul() {
     fetchPurchases();
   }, []);
 
-  const openReceiveConfirm = (purchase: any) => {
-    const itemsToReceive = purchase.items
-      .map((item: any) => ({
+  const openReceiveConfirm = (purchase: Purchase) => {
+    const itemsToReceive = (purchase.items || [])
+      .map((item: PurchaseItem) => ({
         item_id: item.id,
         received: parseFloat(receiptQtys[item.id] || "0")
       }))
-      .filter((r: any) => r.received > 0);
+      .filter((r) => r.received > 0);
 
     if (itemsToReceive.length === 0) {
       setMessage({ type: "error", text: "Lütfen en az bir ürün için kabul miktarı giriniz." });
@@ -63,12 +64,12 @@ export default function MalKabul() {
     const purchase = confirmDialog.purchase;
     if (!purchase) return;
 
-    const itemsToReceive = purchase.items
-      .map((item: any) => ({
+    const itemsToReceive = (purchase.items || [])
+      .map((item: PurchaseItem) => ({
         item_id: item.id,
         received: parseFloat(receiptQtys[item.id] || "0")
       }))
-      .filter((r: any) => r.received > 0);
+      .filter((r) => r.received > 0);
 
     setConfirmDialog({ open: false, type: "receive", purchase: null });
 
@@ -79,7 +80,7 @@ export default function MalKabul() {
       });
       
       const newQtys = { ...receiptQtys };
-      purchase.items.forEach((item: any) => delete newQtys[item.id]);
+      (purchase.items || []).forEach((item: PurchaseItem) => delete newQtys[item.id]);
       setReceiptQtys(newQtys);
       
       setMessage({ type: "success", text: `#${purchase.id} nolu siparişin mal kabulü başarıyla yapıldı.` });
@@ -92,7 +93,7 @@ export default function MalKabul() {
     setTimeout(() => setMessage(null), 5000);
   };
 
-  const openCancelConfirm = (purchase: any) => {
+  const openCancelConfirm = (purchase: Purchase) => {
     setConfirmDialog({ open: true, type: "cancel", purchase });
   };
 
@@ -111,8 +112,8 @@ export default function MalKabul() {
     setTimeout(() => setMessage(null), 5000);
   };
 
-  const pendingOrders = purchases.filter(p => p.status === "Sipariş Verildi");
-  const completedOrders = purchases.filter(p => p.status === "Tamamlandı" || p.status === "İptal");
+  const pendingOrders = purchases.filter((p: Purchase) => p.status === "Sipariş Verildi");
+  const completedOrders = purchases.filter((p: Purchase) => p.status === "Tamamlandı" || p.status === "İptal");
 
   if (loading) return <div className="p-10 text-center text-muted-foreground">Yükleniyor...</div>;
 
@@ -178,16 +179,16 @@ export default function MalKabul() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pendingOrders.map((p) => (
+              {pendingOrders.map((p: Purchase) => (
                 <TableRow key={p.id} className="hover:bg-orange-50/30">
                   <TableCell className="font-mono font-bold text-orange-600 text-lg">#{p.id}</TableCell>
                   <TableCell>
                     <div className="font-bold">
                       {(() => {
                         if (!p.items || p.items.length === 0) return <span className="text-slate-400 italic font-normal">Belirsiz</span>;
-                        const uniqueSuppliers = new Set(p.items.map((i: any) => i.supplier?.name).filter(Boolean));
+                        const uniqueSuppliers = new Set(p.items.map((i: PurchaseItem) => i.supplier?.name).filter(Boolean));
                         if (uniqueSuppliers.size === 0) return <span className="text-slate-400 italic font-normal">Tedarikçi Seçilmedi</span>;
-                        if (uniqueSuppliers.size === 1) return Array.from(uniqueSuppliers)[0];
+                        if (uniqueSuppliers.size === 1) return Array.from(uniqueSuppliers)[0] as string;
                         return <span className="text-orange-600">Çoklu Tedarikçi ({uniqueSuppliers.size})</span>;
                       })()}
                     </div>
@@ -195,7 +196,7 @@ export default function MalKabul() {
                   </TableCell>
                   <TableCell>
                     <div className="space-y-3 py-2">
-                        {p.items?.map((item: any, i: number) => {
+                        {p.items?.map((item: PurchaseItem, i: number) => {
                           const remaining = item.quantity - (item.received_qty || 0);
                           return (
                             <div key={i} className="flex items-center gap-3 bg-white p-2 rounded border border-slate-100 shadow-sm">
@@ -284,7 +285,7 @@ export default function MalKabul() {
         <CardContent className="p-0">
           <Table>
             <TableBody>
-              {completedOrders.slice(0, 5).map((p) => (
+              {completedOrders.slice(0, 5).map((p: Purchase) => (
                 <TableRow key={p.id}>
                   <TableCell className="font-mono text-xs">#{p.id}</TableCell>
                   <TableCell className="text-sm font-medium">{p.supplier?.name}</TableCell>
@@ -322,7 +323,7 @@ export default function MalKabul() {
                   <b>#{confirmDialog.purchase?.id}</b> nolu siparişte girdiğiniz miktarların depoya girişini onaylıyor musunuz?
                 </p>
                 <div className="bg-green-50 p-3 rounded-lg border border-green-100 space-y-1">
-                  {confirmDialog.purchase?.items?.map((item: any) => {
+                  {confirmDialog.purchase?.items?.map((item: PurchaseItem) => {
                     const qty = parseFloat(receiptQtys[item.id] || "0");
                     if (qty <= 0) return null;
                     return (

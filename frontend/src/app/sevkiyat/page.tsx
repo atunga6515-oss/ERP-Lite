@@ -2,17 +2,17 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Truck, Package, CheckCircle, RefreshCw, AlertTriangle, Search } from "lucide-react";
+import { Truck, Package, CheckCircle, RefreshCw, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Sale, SaleItem } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function SevkiyatMasasi() {
-  const [pendingSales, setPendingSales] = useState<any[]>([]);
+  const [pendingSales, setPendingSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -22,7 +22,7 @@ export default function SevkiyatMasasi() {
     try {
       const res = await axios.get(`${API_URL}/sales`);
       // Only show "Hazırlanıyor" status (handle missing status for old/migrated records)
-      const pending = (res.data || []).filter((s: any) => !s.status || s.status === "Hazırlanıyor");
+      const pending = (res.data || []).filter((s: Sale) => !s.status || s.status === "Hazırlanıyor");
       setPendingSales(pending);
     } catch (err) {
       console.error("Satışlar yüklenirken hata:", err);
@@ -54,7 +54,7 @@ export default function SevkiyatMasasi() {
     }
   };
 
-  const filteredSales = pendingSales.filter(s => 
+  const filteredSales = pendingSales.filter((s: Sale) => 
     String(s.id).includes(searchTerm) || 
     s.customer?.name?.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR"))
   );
@@ -105,7 +105,7 @@ export default function SevkiyatMasasi() {
             <p className="text-sm italic">Tüm siparişler gönderildi veya henüz yeni sipariş girilmedi.</p>
           </Card>
         ) : (
-          filteredSales.map((sale) => (
+          filteredSales.map((sale: Sale) => (
             <Card key={sale.id} className="overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all border-l-8 border-l-amber-500">
               <div className="grid grid-cols-1 lg:grid-cols-12">
                 {/* Sol Taraf: Müşteri ve Bilgi */}
@@ -129,7 +129,7 @@ export default function SevkiyatMasasi() {
                 <div className="lg:col-span-5 p-6">
                   <h4 className="text-[10px] uppercase font-black text-slate-400 tracking-[0.2em] mb-3">Yüklenecek Ürünler</h4>
                   <div className="space-y-3">
-                    {sale.items?.map((item: any, idx: number) => (
+                    {sale.items?.map((item: SaleItem, idx: number) => (
                       <div key={idx} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">

@@ -2,30 +2,30 @@
 
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ShoppingBag, Truck, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, FileText, Send, Trash2, Filter, UserCheck } from "lucide-react";
+import { Plus, Truck, ChevronDown, ChevronUp, FileText, Send, Filter, UserCheck } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import Link from "next/link";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Purchase, PurchaseItem, Supplier } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function SatinalmaListesi() {
-  const [purchases, setPurchases] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
   
   // Filter States
   const [statusFilter, setStatusFilter] = useState("all");
   const [supplierFilter, setSupplierFilter] = useState("all");
-  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   
   // Order Dialog State
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
@@ -46,8 +46,6 @@ export default function SatinalmaListesi() {
       setSuppliers(sRes.data || []);
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -56,22 +54,13 @@ export default function SatinalmaListesi() {
   }, []);
 
   const toggleRow = (id: number) => {
-    setExpandedRows(prev => prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]);
+    setExpandedRows(prev => prev.includes(id) ? prev.filter((r: number) => r !== id) : [...prev, id]);
   };
 
-  const handleStatusUpdate = async (id: number, status: string) => {
-    if (!confirm(`Siparişi "${status}" durumuna çekmek istediğinize emin misiniz?`)) return;
-    try {
-      await axios.put(`${API_URL}/purchases/${id}/status`, { status });
-      fetchData();
-    } catch (err) {
-      alert("Durum güncellenemedi.");
-    }
-  };
 
   const handlePlaceOrder = async () => {
-    const selectedPurchase = purchases.find(p => p.id === selectedPurchaseId);
-    const allItemsHaveSupplier = selectedPurchase?.items?.every((item: any) => itemSuppliers[item.id]);
+    const selectedPurchase = purchases.find((p: Purchase) => p.id === selectedPurchaseId);
+    const allItemsHaveSupplier = selectedPurchase?.items?.every((item: PurchaseItem) => itemSuppliers[item.id]);
 
     if (!selectedPurchaseId || !allItemsHaveSupplier) {
       alert("Lütfen siparişteki TÜM ürünler için bir tedarikçi seçin.");
@@ -112,7 +101,7 @@ export default function SatinalmaListesi() {
     }
   };
 
-  const filteredPurchases = purchases.filter(p => {
+  const filteredPurchases = purchases.filter((p: Purchase) => {
     const statusMatch = statusFilter === "all" || p.status === statusFilter;
     const supplierMatch = supplierFilter === "all" || String(p.supplier_id) === supplierFilter;
     return statusMatch && supplierMatch;
@@ -210,7 +199,7 @@ export default function SatinalmaListesi() {
             onChange={e => setSupplierFilter(e.target.value)}
           >
             <option value="all">Tüm Tedarikçiler</option>
-            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {suppliers.map((s: Supplier) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
         <div className="ml-auto text-[10px] text-slate-400 font-bold uppercase">
@@ -233,7 +222,7 @@ export default function SatinalmaListesi() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPurchases.map((p) => (
+              {filteredPurchases.map((p: Purchase) => (
                 <React.Fragment key={p.id}>
                   <TableRow className={`hover:bg-slate-50 transition-colors ${expandedRows.includes(p.id) ? 'bg-slate-50' : ''}`}>
                     <TableCell>
@@ -248,9 +237,9 @@ export default function SatinalmaListesi() {
                     <TableCell className="font-bold text-blue-700">
                       {(() => {
                         if (!p.items || p.items.length === 0) return <span className="text-slate-400 italic font-normal">Belirsiz</span>;
-                        const uniqueSuppliers = new Set(p.items.map((i: any) => i.supplier?.name).filter(Boolean));
+                        const uniqueSuppliers = new Set(p.items.map((i: PurchaseItem) => i.supplier?.name).filter(Boolean));
                         if (uniqueSuppliers.size === 0) return <span className="text-slate-400 italic font-normal">Tedarikçi Seçilmedi</span>;
-                        if (uniqueSuppliers.size === 1) return Array.from(uniqueSuppliers)[0];
+                        if (uniqueSuppliers.size === 1) return Array.from(uniqueSuppliers)[0] as string;
                         return <span className="text-orange-600">Çoklu Tedarikçi ({uniqueSuppliers.size})</span>;
                       })()}
                     </TableCell>
@@ -304,7 +293,7 @@ export default function SatinalmaListesi() {
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {p.items?.map((item: any) => (
+                              {p.items?.map((item: PurchaseItem) => (
                                 <TableRow key={item.id}>
                                   <TableCell className="text-sm font-semibold">
                                     {item.product?.name}
@@ -362,7 +351,7 @@ export default function SatinalmaListesi() {
           <div className="py-6 space-y-4">
               <Label className="text-xs font-bold uppercase text-slate-500">Bu siparişteki ürünler için tedarikçileri atayın:</Label>
               <div className="space-y-3 mt-2">
-                {purchases.find(p => p.id === selectedPurchaseId)?.items?.map((item: any) => (
+                {purchases.find((p: Purchase) => p.id === selectedPurchaseId)?.items?.map((item: PurchaseItem) => (
                   <div key={item.id} className="flex flex-col gap-1 p-3 bg-slate-50 rounded-lg border border-slate-100">
                     <span className="text-sm font-semibold text-slate-700">{item.product?.name}</span>
                     <div className="flex gap-2 text-xs text-slate-500">
@@ -376,7 +365,7 @@ export default function SatinalmaListesi() {
                       onChange={e => setItemSuppliers({ ...itemSuppliers, [item.id]: e.target.value })}
                     >
                       <option value="">Tedarikçi Seçiniz...</option>
-                      {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      {suppliers.map((s: Supplier) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
                 ))}

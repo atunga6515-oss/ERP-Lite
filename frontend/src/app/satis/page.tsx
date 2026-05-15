@@ -10,23 +10,35 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ShoppingCart, Plus, Users, Trash2, Package, CheckCircle, Search, Truck, Clock, AlertTriangle } from "lucide-react";
+import { ShoppingCart, Plus, Trash2, Package, CheckCircle, Search, Clock, AlertTriangle } from "lucide-react";
+import { Product, Warehouse, Customer, Stock, Sale, SaleItem } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
+interface BasketItem {
+  product_id: number;
+  product_name?: string;
+  product_barcode?: string;
+  warehouse_id: number;
+  warehouse_name?: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
 export default function Satis() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [warehouses, setWarehouses] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [stocks, setStocks] = useState<any[]>([]);
-  const [sales, setSales] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   
   // Sale Form State
   const [customerId, setCustomerId] = useState("");
   const [note, setNote] = useState("");
   
   // Basket State
-  const [basket, setBasket] = useState<any[]>([]);
+  const [basket, setBasket] = useState<BasketItem[]>([]);
   
   // Current Item Selection State
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -79,14 +91,14 @@ export default function Satis() {
       return;
     }
 
-    const product = products.find(p => String(p.id) === selectedProductId);
-    const warehouse = warehouses.find(w => String(w.id) === selectedWarehouseId);
+    const product = products.find((p: Product) => String(p.id) === selectedProductId);
+    const warehouse = warehouses.find((w: Warehouse) => String(w.id) === selectedWarehouseId);
     
     // Check available stock
-    const available = stocks.find(s => String(s.warehouse_id) === selectedWarehouseId && String(s.product_id) === selectedProductId)?.quantity || 0;
+    const available = stocks.find((s: Stock) => String(s.warehouse_id) === selectedWarehouseId && String(s.product_id) === selectedProductId)?.quantity || 0;
     const alreadyInBasket = basket
-      .filter(item => String(item.product_id) === selectedProductId && String(item.warehouse_id) === selectedWarehouseId)
-      .reduce((sum, item) => sum + item.quantity, 0);
+      .filter((item: BasketItem) => String(item.product_id) === selectedProductId && String(item.warehouse_id) === selectedWarehouseId)
+      .reduce((sum: number, item: BasketItem) => sum + item.quantity, 0);
 
     const requested = Math.floor(Number(itemQuantity));
 
@@ -95,7 +107,7 @@ export default function Satis() {
       return;
     }
 
-    const newItem = {
+    const newItem: BasketItem = {
       product_id: Number(selectedProductId),
       product_name: product?.name,
       product_barcode: product?.barcode,
@@ -141,7 +153,7 @@ export default function Satis() {
     try {
       await axios.post(`${API_URL}/sales`, {
         customer_id: Number(customerId),
-        items: basket.map(item => ({
+        items: basket.map((item: BasketItem) => ({
           product_id: item.product_id,
           warehouse_id: item.warehouse_id,
           quantity: item.quantity,
@@ -181,7 +193,7 @@ export default function Satis() {
     }
   };
 
-  const totalBasketAmount = basket.reduce((sum, item) => sum + item.total_price, 0);
+  const totalBasketAmount = basket.reduce((sum: number, item: BasketItem) => sum + item.total_price, 0);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20">
@@ -244,7 +256,7 @@ export default function Satis() {
                     onChange={e => setSelectedWarehouseId(e.target.value)}
                   >
                     <option value="">Seçiniz...</option>
-                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    {warehouses.map((w: Warehouse) => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
                 </div>
 
@@ -277,12 +289,12 @@ export default function Satis() {
                       </div>
                       <div className="max-h-[300px] overflow-y-auto custom-scrollbar bg-white">
                         {products
-                          .filter(p => 
+                          .filter((p: Product) => 
                             p.name.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR")) || 
                             p.barcode.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR"))
                           )
-                          .map(p => {
-                            const s = stocks.find(st => String(st.warehouse_id) === selectedWarehouseId && st.product_id === p.id);
+                          .map((p: Product) => {
+                            const s = stocks.find((st: Stock) => String(st.warehouse_id) === selectedWarehouseId && st.product_id === p.id);
                             const currentQty = s ? s.quantity : 0;
                             return (
                               <div 
@@ -347,7 +359,7 @@ export default function Satis() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {basket.map((item, idx) => (
+                  {basket.map((item: BasketItem, idx: number) => (
                     <TableRow key={idx}>
                       <TableCell>
                         <p className="font-bold text-sm leading-tight">{item.product_name}</p>
@@ -389,7 +401,7 @@ export default function Satis() {
                   onChange={e => setCustomerId(e.target.value)}
                 >
                   <option value="">Müşteri Seçiniz...</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {customers.map((c: Customer) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
 
@@ -449,7 +461,7 @@ export default function Satis() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sales.map((sale) => (
+              {sales.map((sale: Sale) => (
                 <TableRow key={sale.id} className="hover:bg-slate-50 transition-colors group">
                   <TableCell className="font-mono font-bold text-slate-400 text-xs">#SAL-{sale.id}</TableCell>
                   <TableCell>
@@ -458,7 +470,7 @@ export default function Satis() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto scrollbar-thin">
-                      {sale.items?.map((item: any, i: number) => (
+                      {sale.items?.map((item: SaleItem, i: number) => (
                         <div key={i} className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
                           <Package className="w-3 h-3 text-blue-400" />
                           <span>{item.product?.name} ({item.quantity})</span>

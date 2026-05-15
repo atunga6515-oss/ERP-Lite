@@ -9,12 +9,25 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Users, Shield, Mail, Save, Plus, Trash2, Key, Clock, ShieldCheck, Send, Edit, BellRing, Info, Zap, LayoutGrid, Eye, EyeOff, ShoppingBag, Boxes, ClipboardList, Hammer, Truck, Building2, Phone, Globe, MapPin, Upload, X, Building, Image as ImageIcon } from "lucide-react";
+import { Settings, Users, Shield, Mail, Save, Plus, Trash2, Send, Edit, BellRing, Zap, LayoutGrid, Eye, EyeOff, ShoppingBag, Boxes, ClipboardList, Hammer, Truck, Building2, Phone, MapPin, Upload, Image as ImageIcon, ShieldCheck, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { User, Permission, IssuingCompany } from "@/types";
+
+interface NotificationRule {
+  id?: number;
+  flow_name: string;
+  trigger_event: string;
+  target_status: string;
+  recipient_emails: string;
+  manual_recipients: string;
+  subject_template: string;
+  body_template: string;
+  is_active: boolean;
+}
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
@@ -75,8 +88,8 @@ const MODULE_LIST = [
 const DEFAULT_ACTIVE_MODULES = ["tanimlar", "stok", "satinalma", "satis", "uretim", "raporlar"];
 
 export default function AdminPage() {
-  const [settings, setSettings] = useState<any>({});
-  const [users, setUsers] = useState<any[]>([]);
+  const [settings, setSettings] = useState<Record<string, string>>({});
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeModules, setActiveModules] = useState<string[]>(DEFAULT_ACTIVE_MODULES);
   
@@ -86,16 +99,16 @@ export default function AdminPage() {
     email: "",
     password: "",
     is_admin: false,
-    permissions: INITIAL_PERMISSIONS
+    permissions: INITIAL_PERMISSIONS as { module_name: string; can_access: boolean }[]
   });
 
   // Edit User State
-  const [editUser, setEditUser] = useState<any>({ id: null, email: "", password: "", is_admin: false, permissions: [] });
+  const [editUser, setEditUser] = useState<{ id: number | null; email: string; password?: string; is_admin: boolean; permissions: { module_name: string; can_access: boolean }[] }>({ id: null, email: "", password: "", is_admin: false, permissions: [] });
   const [editUserDialogOpen, setEditUserDialogOpen] = useState(false);
 
   // Notification Rules State
-  const [notificationRules, setNotificationRules] = useState<any[]>([]);
-  const [newRule, setNewRule] = useState({
+  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>([]);
+  const [newRule, setNewRule] = useState<NotificationRule>({
     flow_name: "PURCHASE",
     trigger_event: "CREATED",
     target_status: "",
@@ -105,13 +118,13 @@ export default function AdminPage() {
     body_template: "Merhaba, {SUPPLIER} firmasından #{ID} nolu yeni bir satınalma talebi oluşturulmuştur.\n\nSipariş Verilen Ürünler:\n{PURCHASE_ITEMS}",
     is_active: true
   });
-  const [editRule, setEditRule] = useState<any>(null);
+  const [editRule, setEditRule] = useState<NotificationRule | null>(null);
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false);
 
   // Issuing Companies State
-  const [companies, setCompanies] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<IssuingCompany[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingCompany, setEditingCompany] = useState<any>(null);
+  const [editingCompany, setEditingCompany] = useState<IssuingCompany | null>(null);
   const [companyFormData, setCompanyFormData] = useState({
     name: "", address: "", phone: "", email: "", web: "", logo_path: ""
   });
@@ -202,21 +215,29 @@ export default function AdminPage() {
   };
 
   const togglePermission = (moduleId: string) => {
-    const target = editUser ? editUser : newUser;
-    const setter = editUser ? setEditUser : setNewUser;
-
-    const existing = target.permissions.find((p: any) => p.module_name === moduleId);
-    let newPermissions;
-
-    if (existing) {
-      newPermissions = target.permissions.map((p: any) => 
-        p.module_name === moduleId ? { ...p, can_access: !p.can_access } : p
-      );
+    if (editUser.id) {
+      const existing = editUser.permissions.find((p: { module_name: string; can_access: boolean }) => p.module_name === moduleId);
+      let newPermissions;
+      if (existing) {
+        newPermissions = editUser.permissions.map((p: { module_name: string; can_access: boolean }) => 
+          p.module_name === moduleId ? { ...p, can_access: !p.can_access } : p
+        );
+      } else {
+        newPermissions = [...editUser.permissions, { module_name: moduleId, can_access: true }];
+      }
+      setEditUser({ ...editUser, permissions: newPermissions });
     } else {
-      newPermissions = [...target.permissions, { module_name: moduleId, can_access: true }];
+      const existing = newUser.permissions.find((p: { module_name: string; can_access: boolean }) => p.module_name === moduleId);
+      let newPermissions;
+      if (existing) {
+        newPermissions = newUser.permissions.map((p: { module_name: string; can_access: boolean }) => 
+          p.module_name === moduleId ? { ...p, can_access: !p.can_access } : p
+        );
+      } else {
+        newPermissions = [...newUser.permissions, { module_name: moduleId, can_access: true }];
+      }
+      setNewUser({ ...newUser, permissions: newPermissions });
     }
-
-    setter({ ...target, permissions: newPermissions });
   };
 
   const handleUpdateUser = async () => {
@@ -294,7 +315,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleTestRule = async (rule: any) => {
+  const handleTestRule = async (rule: NotificationRule) => {
     try {
       setLoading(true);
       await axios.post(`${API_URL}/notifications/rules/${rule.id}/test`);
@@ -317,7 +338,7 @@ export default function AdminPage() {
   };
 
   const getFlowLabel = (flow: string) => {
-    const labels: any = {
+    const labels: Record<string, string> = {
       "PURCHASE": "Satınalma",
       "WORK_ORDER": "İş Emri / Üretim",
       "QUOTE": "Teklif",
@@ -329,7 +350,7 @@ export default function AdminPage() {
   };
 
   const getEventLabel = (event: string) => {
-    const labels: any = {
+    const labels: Record<string, string> = {
       "CREATED": "Yeni Kayıt",
       "STATUS_CHANGED": "Durum Değişimi",
       "CRITICAL_STOCK": "Kritik Stok Uyarısı"
@@ -337,14 +358,14 @@ export default function AdminPage() {
     return labels[event] || event;
   };
 
-  const STATUS_OPTIONS: any = {
+  const STATUS_OPTIONS: Record<string, string[]> = {
     "PURCHASE": ["Hazırlanıyor", "Sipariş Verildi", "Depoya Alındı", "İptal"],
     "WORK_ORDER": ["Planlandı", "Üretimde", "Tamamlandı", "İptal"],
     "QUOTE": ["Beklemede", "Gönderildi", "Onaylandı", "Reddedildi", "Satışa Döndü"],
     "SALE": ["Tamamlandı"],
   };
 
-  const DEFAULT_TEMPLATES: any = {
+  const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string }> = {
     "PURCHASE_CREATED": {
       subject: "Yeni Satınalma Talebi: #{ID}",
       body: "Merhaba, {SUPPLIER} firmasından #{ID} nolu yeni bir satınalma talebi oluşturulmuştur.\n\nSipariş Verilen Ürünler:\n{PURCHASE_ITEMS}\n\nToplam Tutar: {TOTAL} ₺\nNot: {NOTE}"
@@ -445,7 +466,7 @@ export default function AdminPage() {
                             <div key={cat.category} className="border rounded-lg p-3 bg-slate-50/50 space-y-2">
                               <h4 className="font-bold text-[10px] text-slate-700 uppercase mb-2 border-b pb-1">{cat.category}</h4>
                               {cat.menus.map(m => {
-                                const perm = newUser.permissions.find((p: any) => p.module_name === m.id) || { can_access: false };
+                                const perm = newUser.permissions.find((p) => p.module_name === m.id) || { can_access: false };
                                 return (
                                   <div key={m.id} className="flex items-center justify-between bg-white p-2 rounded border border-slate-100">
                                     <span className="text-xs font-semibold">{m.label}</span>
@@ -486,7 +507,7 @@ export default function AdminPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((u) => (
+                  {users.map((u: User) => (
                     <TableRow key={u.id}>
                       <TableCell className="font-bold text-slate-700">{u.username}</TableCell>
                       <TableCell className="text-slate-500 text-sm">{u.email}</TableCell>
@@ -507,7 +528,7 @@ export default function AdminPage() {
                               is_admin: u.is_admin,
                               permissions: MENU_STRUCTURE.flatMap(cat => 
                                 cat.menus.map(m => {
-                                  const existing = u.permissions?.find((p: any) => p.module_name === m.id);
+                                  const existing = u.permissions?.find((p: Permission) => p.module_name === m.id);
                                   return existing ? { 
                                     module_name: existing.module_name, 
                                     can_access: existing.can_access
@@ -577,18 +598,18 @@ export default function AdminPage() {
                     {MENU_STRUCTURE.map(cat => (
                       <div key={cat.category} className="border rounded-lg p-3 bg-slate-50/50 space-y-2">
                         <h4 className="font-bold text-[10px] text-slate-700 uppercase mb-2 border-b pb-1">{cat.category}</h4>
-                        {cat.menus.map(m => {
-                          const perm = editUser.permissions?.find((p: any) => p.module_name === m.id) || { can_access: false };
-                          return (
-                            <div key={`edit-${m.id}`} className="flex items-center justify-between bg-white p-2 rounded border border-slate-100">
-                              <span className="text-xs font-semibold">{m.label}</span>
-                              <Switch 
-                                checked={perm.can_access} 
-                                onCheckedChange={() => togglePermission(m.id)} 
-                              />
-                            </div>
-                          );
-                        })}
+                          {cat.menus.map(m => {
+                            const perm = editUser.permissions?.find((p: { module_name: string; can_access: boolean }) => p.module_name === m.id) || { module_name: m.id, can_access: false };
+                            return (
+                              <div key={`edit-${m.id}`} className="flex items-center justify-between bg-white p-2 rounded border border-slate-100">
+                                <span className="text-xs font-semibold">{m.label}</span>
+                                <Switch 
+                                  checked={perm.can_access} 
+                                  onCheckedChange={() => togglePermission(m.id)} 
+                                />
+                              </div>
+                            );
+                          })}
                       </div>
                     ))}
                   </div>
@@ -680,7 +701,9 @@ export default function AdminPage() {
                   <Select 
                     key={`smtp-prov-${settings.smtp_provider}`}
                     value={settings.smtp_provider || "gmail"} 
-                    onValueChange={(val) => handleSettingSave("smtp_provider", val)}
+                    onValueChange={(val) => {
+                      if (val) handleSettingSave("smtp_provider", val);
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seçiniz..." />
@@ -930,7 +953,7 @@ export default function AdminPage() {
                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button variant="ghost" size="icon" onClick={() => handleTestRule(rule)} className="h-8 w-8 text-orange-600 hover:bg-orange-50" title="Test Gönder"><Send className="w-4 h-4" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => { setEditRule(rule); setIsRuleDialogOpen(true); }} className="h-8 w-8 text-blue-600 hover:bg-blue-50"><Edit className="w-4 h-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteRule(rule.id)} className="h-8 w-8 text-red-600 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => { if (rule.id) handleDeleteRule(rule.id); }} className="h-8 w-8 text-red-600 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -965,14 +988,26 @@ export default function AdminPage() {
                           onValueChange={(val) => {
                             const event = editRule ? editRule.trigger_event : newRule.trigger_event;
                             const template = DEFAULT_TEMPLATES[`${val}_${event}`] || { subject: "", body: "" };
-                            const setter = editRule ? setEditRule : setNewRule;
-                            setter((prev: any) => ({
-                              ...prev,
-                              flow_name: val,
-                              target_status: "",
-                              subject_template: template.subject,
-                              body_template: template.body
-                            }));
+                            if (editRule) {
+                              setEditRule((prev: NotificationRule | null) => {
+                                if (!prev) return null;
+                                return {
+                                  ...prev,
+                                  flow_name: val,
+                                  target_status: "",
+                                  subject_template: template.subject,
+                                  body_template: template.body
+                                } as NotificationRule;
+                              });
+                            } else {
+                              setNewRule((prev: NotificationRule) => ({
+                                ...prev,
+                                flow_name: val,
+                                target_status: "",
+                                subject_template: template.subject,
+                                body_template: template.body
+                              } as NotificationRule));
+                            }
                           }}
                         >
                           <SelectTrigger className="h-11 bg-slate-50">
@@ -995,14 +1030,26 @@ export default function AdminPage() {
                           onValueChange={(val) => {
                             const flow = editRule ? editRule.flow_name : newRule.flow_name;
                             const template = DEFAULT_TEMPLATES[`${flow}_${val}`] || { subject: "", body: "" };
-                            const setter = editRule ? setEditRule : setNewRule;
-                            setter((prev: any) => ({
-                              ...prev,
-                              trigger_event: val,
-                              target_status: val !== 'STATUS_CHANGED' ? "" : prev.target_status,
-                              subject_template: template.subject,
-                              body_template: template.body
-                            }));
+                            if (editRule) {
+                              setEditRule((prev: NotificationRule | null) => {
+                                if (!prev) return null;
+                                return {
+                                  ...prev,
+                                  trigger_event: val,
+                                  target_status: val !== 'STATUS_CHANGED' ? "" : prev.target_status,
+                                  subject_template: template.subject,
+                                  body_template: template.body
+                                } as NotificationRule;
+                              });
+                            } else {
+                              setNewRule((prev: NotificationRule) => ({
+                                ...prev,
+                                trigger_event: val,
+                                target_status: val !== 'STATUS_CHANGED' ? "" : prev.target_status,
+                                subject_template: template.subject,
+                                body_template: template.body
+                              } as NotificationRule));
+                            }
                           }}
                         >
                           <SelectTrigger className="h-11 bg-slate-50">
@@ -1029,9 +1076,14 @@ export default function AdminPage() {
                                 <Checkbox 
                                   id={`status-${status}`} 
                                   checked={isChecked}
-                                  onCheckedChange={(checked) => {
-                                    const updated = checked ? [...current, status].join(",") : current.filter(s => s !== status).join(",");
-                                    editRule ? setEditRule({...editRule, target_status: updated}) : setNewRule({...newRule, target_status: updated});
+                                  onCheckedChange={(checked: boolean | "indeterminate") => {
+                                    const isBool = checked === true;
+                                    const updated = isBool ? [...current, status].join(",") : current.filter((s: string) => s !== status).join(",");
+                                    if (editRule) {
+                                      setEditRule({...editRule, target_status: updated});
+                                    } else {
+                                      setNewRule({...newRule, target_status: updated});
+                                    }
                                   }}
                                 />
                                 <Label htmlFor={`status-${status}`} className="text-xs cursor-pointer">{status}</Label>

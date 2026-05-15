@@ -6,30 +6,40 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { 
-  Plus, Trash2, ClipboardList, Send, ArrowLeft, 
-  UserPlus, Package, Search, CheckCircle, Calendar, Coins,
-  FileText, Info, AlertCircle, Percent, Building2
+  Plus, Trash2, Send, ArrowLeft, 
+  UserPlus, Package, Search, Calendar, Coins,
+  FileText, Percent, Building2
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Customer, Product, Stock, Recipe, IssuingCompany } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 const UPLOAD_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080` : "http://localhost:8080";
 
+interface QuoteFormItem {
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  tax_rate: number;
+  tax_amount: number;
+  total_price: number;
+}
+
 export default function TeklifOlustur() {
   const router = useRouter();
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [stocks, setStocks] = useState<any[]>([]);
-  const [recipes, setRecipes] = useState<any[]>([]);
-  const [issuingCompanies, setIssuingCompanies] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [issuingCompanies, setIssuingCompanies] = useState<IssuingCompany[]>([]);
   
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [selectedIssuingCompanyId, setSelectedIssuingCompanyId] = useState("");
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<QuoteFormItem[]>([]);
   const [note, setNote] = useState("");
   const [currency, setCurrency] = useState("TL");
   const [validUntil, setValidUntil] = useState("");
@@ -79,12 +89,12 @@ export default function TeklifOlustur() {
     }
   };
 
-  const updateItem = (index: number, field: string, value: any) => {
+  const updateItem = (index: number, field: keyof QuoteFormItem, value: string | number) => {
     const newItems = [...items];
-    newItems[index][field] = value;
+    newItems[index] = { ...newItems[index], [field]: value };
 
     if (field === "product_id") {
-      const prod = products.find(p => String(p.id) === String(value));
+      const prod = products.find((p: Product) => String(p.id) === String(value));
       if (prod) newItems[index].unit_price = prod.sale_price || 0;
     }
 
@@ -132,7 +142,7 @@ export default function TeklifOlustur() {
         note: note,
         currency: currency,
         status: "Beklemede",
-        items: items.map(item => ({
+        items: items.map((item: QuoteFormItem) => ({
           product_id: Number(item.product_id),
           quantity: Number(item.quantity),
           unit_price: Number(item.unit_price),
@@ -201,7 +211,7 @@ export default function TeklifOlustur() {
                     onChange={e => setSelectedIssuingCompanyId(e.target.value)}
                   >
                     <option value="">Lütfen seçim yapınız...</option>
-                    {issuingCompanies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {issuingCompanies.map((c: IssuingCompany) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                   <Building2 className="absolute left-4 top-3.5 w-4 h-4 text-slate-400" />
                 </div>
@@ -216,7 +226,7 @@ export default function TeklifOlustur() {
                   required
                 >
                   <option value="">Lütfen seçim yapınız...</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {customers.map((c: Customer) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
 
@@ -318,7 +328,7 @@ export default function TeklifOlustur() {
                     </tr>
                   </thead>
                   <tbody className="overflow-visible">
-                  {items.map((item, index) => (
+                  {items.map((item: QuoteFormItem, index: number) => (
                     <tr key={index} className="group transition-colors hover:bg-slate-50/30 border-b border-slate-100 last:border-0">
                       <td className="relative overflow-visible pl-8 py-5">
                         <div 
@@ -330,7 +340,7 @@ export default function TeklifOlustur() {
                         >
                           <span className={`${item.product_id ? "text-slate-900 font-black" : "text-slate-400 font-medium"} truncate flex-1`}>
                             {item.product_id 
-                              ? products.find(p => String(p.id) === String(item.product_id))?.name || "Seçiniz..."
+                              ? products.find((p: Product) => String(p.id) === String(item.product_id))?.name || "Seçiniz..."
                               : "Ürün Seç..."
                             }
                           </span>
@@ -353,16 +363,16 @@ export default function TeklifOlustur() {
                               </div>
                               <div className="max-h-[350px] overflow-y-auto custom-scrollbar bg-white p-2">
                                 {products
-                                  .filter(p => 
+                                  .filter((p: Product) => 
                                     p.name.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR")) || 
-                                    p.barcode.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR"))
+                                    (p.barcode || "").toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR"))
                                   )
-                                  .map(p => {
+                                  .map((p: Product) => {
                                     const totalStock = stocks
-                                      .filter(s => s.product_id === p.id)
-                                      .reduce((acc, s) => acc + s.quantity, 0);
+                                      .filter((s: Stock) => s.product_id === p.id)
+                                      .reduce((acc: number, s: Stock) => acc + s.quantity, 0);
 
-                                    const recipe = recipes.find(r => r.product_id === p.id);
+                                    const recipe = recipes.find((r: Recipe) => r.product_id === p.id);
                                     const hasImage = recipe && recipe.image_path;
 
                                     return (

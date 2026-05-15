@@ -7,27 +7,33 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Plus, Trash2, Save, BookOpen, CheckCircle, Info, Upload, Image as ImageIcon } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Search, Plus, Trash2, BookOpen, CheckCircle, Info, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Product, Recipe, Stock } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 const UPLOAD_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080` : "http://localhost:8080";
 
+interface RecipeFormItem {
+  product_id: string;
+  quantity: number | string;
+}
+
 export default function Receteler() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [recipes, setRecipes] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
   const [selectedMainProduct, setSelectedMainProduct] = useState("");
-  const [recipeItems, setRecipeItems] = useState<any[]>([]);
+  const [recipeItems, setRecipeItems] = useState<RecipeFormItem[]>([]);
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [existingImagePath, setExistingImagePath] = useState<string | null>(null);
   const [isEdit, setIsEdit] = useState(false);
-  const [stocks, setStocks] = useState<any[]>([]);
+  const [stocks, setStocks] = useState<Stock[]>([]);
   const [mainSearchTerm, setMainSearchTerm] = useState("");
   const [isMainSearchOpen, setIsMainSearchOpen] = useState(false);
   const [itemSearchTerms, setItemSearchTerms] = useState<Record<number, string>>({});
@@ -62,9 +68,9 @@ export default function Receteler() {
     setIsDialogOpen(true);
   };
 
-  const openEditDialog = (recipe: any) => {
+  const openEditDialog = (recipe: Recipe) => {
     setSelectedMainProduct(String(recipe.product_id));
-    setRecipeItems(recipe.items?.map((item: any) => ({
+    setRecipeItems(recipe.items?.map((item) => ({
       product_id: String(item.product_id),
       quantity: item.quantity
     })) || []);
@@ -95,9 +101,9 @@ export default function Receteler() {
     setRecipeItems(recipeItems.filter((_, i) => i !== index));
   };
 
-  const updateRecipeItem = (index: number, field: string, value: any) => {
+  const updateRecipeItem = (index: number, field: keyof RecipeFormItem, value: string | number) => {
     const newItems = [...recipeItems];
-    newItems[index][field] = value;
+    newItems[index] = { ...newItems[index], [field]: value };
     setRecipeItems(newItems);
   };
 
@@ -122,7 +128,7 @@ export default function Receteler() {
       await axios.post(`${API_URL}/recipes`, {
         product_id: Number(selectedMainProduct),
         image_path: imagePath,
-        items: recipeItems.map(item => ({
+        items: recipeItems.map((item: RecipeFormItem) => ({
           product_id: Number(item.product_id),
           quantity: Number(item.quantity)
         }))
@@ -148,7 +154,7 @@ export default function Receteler() {
     }
   };
 
-  const filteredRecipes = recipes.filter(r => 
+  const filteredRecipes = recipes.filter((r: Recipe) => 
     r.product?.name?.toLowerCase().includes(search.toLowerCase()) || 
     r.product?.barcode?.includes(search)
   );
@@ -188,7 +194,7 @@ export default function Receteler() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRecipes.map(r => (
+              {filteredRecipes.map((r: Recipe) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">
                     <div className="flex flex-col">
@@ -204,7 +210,7 @@ export default function Receteler() {
                     <Button variant="ghost" size="icon" onClick={() => openEditDialog(r)} title="Düzenle">
                       <BookOpen className="w-4 h-4 text-blue-600" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)} title="Sil">
+                    <Button variant="ghost" size="icon" onClick={() => r.id && handleDelete(r.id)} title="Sil">
                       <Trash2 className="w-4 h-4 text-red-600" />
                     </Button>
                   </TableCell>
@@ -257,7 +263,7 @@ export default function Receteler() {
                       >
                         <span className={selectedMainProduct ? "text-slate-900" : "text-slate-400"}>
                           {selectedMainProduct 
-                            ? products.find(p => String(p.id) === selectedMainProduct)?.name || "Seçiniz..."
+                            ? products.find((p: Product) => String(p.id) === selectedMainProduct)?.name || "Seçiniz..."
                             : "Lütfen ürün seçiniz..."
                           }
                         </span>
@@ -278,13 +284,13 @@ export default function Receteler() {
                           </div>
                           <div className="max-h-[350px] overflow-y-auto custom-scrollbar bg-white">
                             {products
-                              .filter(p => p.barcode?.startsWith("ALP"))
-                              .filter(p => isEdit || !recipes.some(r => r.product_id === p.id))
-                              .filter(p => 
+                              .filter((p: Product) => p.barcode?.startsWith("ALP"))
+                              .filter((p: Product) => isEdit || !recipes.some((r: Recipe) => r.product_id === p.id))
+                              .filter((p: Product) => 
                                 p.name.toLocaleLowerCase("tr-TR").includes(mainSearchTerm.toLocaleLowerCase("tr-TR")) || 
-                                p.barcode.toLocaleLowerCase("tr-TR").includes(mainSearchTerm.toLocaleLowerCase("tr-TR"))
+                                (p.barcode || "").toLocaleLowerCase("tr-TR").includes(mainSearchTerm.toLocaleLowerCase("tr-TR"))
                               )
-                              .map(p => (
+                              .map((p: Product) => (
                                 <div 
                                   key={p.id}
                                   className={`flex items-center justify-between p-3 border-b border-slate-50 transition-all cursor-pointer group hover:bg-orange-50/50 ${
@@ -389,7 +395,7 @@ export default function Receteler() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {recipeItems.map((item, idx) => (
+                        {recipeItems.map((item: RecipeFormItem, idx: number) => (
                           <TableRow key={idx} className="hover:bg-blue-50/30">
                             <TableCell className="font-bold text-slate-400">#{idx + 1}</TableCell>
                             <TableCell className="relative p-2">
@@ -399,7 +405,7 @@ export default function Receteler() {
                               >
                                 <span className={`font-bold truncate whitespace-nowrap max-w-[380px] ${item.product_id ? "text-slate-900" : "text-slate-400"}`}>
                                   {item.product_id 
-                                    ? products.find(p => String(p.id) === item.product_id)?.name || "Seçiniz..."
+                                    ? products.find((p: Product) => String(p.id) === item.product_id)?.name || "Seçiniz..."
                                     : "Hammadde Seçiniz..."
                                   }
                                 </span>
@@ -420,15 +426,15 @@ export default function Receteler() {
                                   </div>
                                   <div className="max-h-[300px] overflow-y-auto custom-scrollbar bg-white">
                                     {products
-                                      .filter(p => String(p.id) !== selectedMainProduct)
-                                      .filter(p => {
+                                      .filter((p: Product) => String(p.id) !== selectedMainProduct)
+                                      .filter((p: Product) => {
                                         const term = (itemSearchTerms[idx] || "").toLocaleLowerCase("tr-TR");
-                                        return p.name.toLocaleLowerCase("tr-TR").includes(term) || p.barcode.toLocaleLowerCase("tr-TR").includes(term);
+                                        return p.name.toLocaleLowerCase("tr-TR").includes(term) || (p.barcode || "").toLocaleLowerCase("tr-TR").includes(term);
                                       })
-                                      .map(p => {
+                                      .map((p: Product) => {
                                         const totalStock = stocks
-                                          .filter(s => s.product_id === p.id)
-                                          .reduce((sum, s) => sum + s.quantity, 0);
+                                          .filter((s: Stock) => s.product_id === p.id)
+                                          .reduce((sum: number, s: Stock) => sum + s.quantity, 0);
                                         const isSelected = String(p.id) === item.product_id;
                                         return (
                                           <div 
@@ -481,7 +487,7 @@ export default function Receteler() {
                                   className="font-bold text-lg text-blue-700 border-blue-200 focus-visible:ring-blue-500"
                                 />
                                 <span className="text-xs font-bold text-slate-500">
-                                  {products.find(p => String(p.id) === item.product_id)?.unit || "Birim"}
+                                  {products.find((p: Product) => String(p.id) === item.product_id)?.unit || "Birim"}
                                 </span>
                               </div>
                             </TableCell>

@@ -8,15 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { Upload, Edit, Trash2, Download } from "lucide-react";
+import { Product } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function Urunler() {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [formData, setFormData] = useState({
     id: null as number | null, name: "", barcode: "", unit: "Adet", category: "", min_stock_level: 0
   });
@@ -77,7 +78,7 @@ export default function Urunler() {
     setIsDialogOpen(true);
   };
 
-  const openEditDialog = (product: any) => {
+  const openEditDialog = (product: Product) => {
     setFormData({
       id: product.id,
       name: product.name,
@@ -169,13 +170,13 @@ export default function Urunler() {
             return;
           }
 
-          importedProducts = rows.slice(1).map(row => ({
+          importedProducts = rows.slice(1).map((row: any[]) => ({
             name: String(row[nameIdx] || ""),
             barcode: String(row[barcodeIdx] || ""),
             unit: unitIdx !== -1 ? String(row[unitIdx] || "Adet") : "Adet",
             category: categoryIdx !== -1 ? String(row[categoryIdx] || "") : "",
             min_stock_level: minStockIdx !== -1 ? Number(row[minStockIdx] || 0) : 0
-          })).filter(p => p.name && p.barcode && p.name !== "undefined");
+          })).filter((p: any) => p.name && p.barcode && p.name !== "undefined");
 
           await submitBulk(importedProducts);
         };
@@ -206,7 +207,7 @@ export default function Urunler() {
     }
   };
 
-  const filteredProducts = products.filter(p => 
+   const filteredProducts = products.filter((p: Product) => 
     p.name?.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR')) || 
     p.barcode?.includes(search) ||
     p.category?.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR'))
@@ -307,7 +308,7 @@ export default function Urunler() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.map((product) => (
+              {filteredProducts.map((product: Product) => (
                 <TableRow key={product.id}>
                   <TableCell className="font-mono">{product.barcode}</TableCell>
                   <TableCell className="font-medium">{product.name}</TableCell>

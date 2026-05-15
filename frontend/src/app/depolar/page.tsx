@@ -9,11 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Edit, Trash2 } from "lucide-react";
+import { Warehouse } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function Depolar() {
-  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,7 +55,7 @@ export default function Depolar() {
     }
   };
 
-  const openEdit = (w: any) => {
+  const openEdit = (w: Warehouse) => {
     setEditId(w.id);
     setEditName(w.name);
     setEditDescription(w.description);
@@ -142,7 +143,7 @@ export default function Depolar() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {warehouses.map(w => (
+                {warehouses.map((w: Warehouse) => (
                   <TableRow key={w.id}>
                     <TableCell>{w.id}</TableCell>
                     <TableCell className="font-medium">{w.name}</TableCell>

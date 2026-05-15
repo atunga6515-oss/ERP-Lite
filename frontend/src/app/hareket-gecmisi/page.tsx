@@ -8,11 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Movement } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function HareketGecmisi() {
-  const [movements, setMovements] = useState<any[]>([]);
+  const [movements, setMovements] = useState<Movement[]>([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -27,7 +28,7 @@ export default function HareketGecmisi() {
     fetchMovements();
   }, []);
 
-  const filteredMovements = movements.filter((m: any) => 
+  const filteredMovements = movements.filter((m: Movement) => 
     m.product?.name?.toLowerCase().includes(search.toLowerCase()) ||
     m.product?.barcode?.includes(search) ||
     m.type?.toLowerCase().includes(search.toLowerCase()) ||
@@ -68,7 +69,7 @@ export default function HareketGecmisi() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredMovements.map((m: any) => (
+              {filteredMovements.map((m: Movement) => (
                 <TableRow key={m.id}>
                   <TableCell className="text-sm">
                     {m.timestamp ? format(new Date(m.timestamp), "dd MMM yyyy HH:mm", { locale: tr }) : "-"}

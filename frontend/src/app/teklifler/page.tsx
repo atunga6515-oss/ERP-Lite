@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
@@ -16,18 +16,17 @@ import Link from "next/link";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useAuth } from "@/context/AuthContext";
+import { Quote, Warehouse, QuoteItem } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 const UPLOAD_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080` : "http://localhost:8080";
 
 export default function Teklifler() {
   const { user } = useAuth();
-  const [quotes, setQuotes] = useState<any[]>([]);
-  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
-  const [settings, setSettings] = useState<any>({});
-  const [recipes, setRecipes] = useState<any[]>([]);
   const [selectedWarehouse, setSelectedWarehouse] = useState("");
 
   const getBase64ImageFromURL = async (url: string): Promise<string> => {
@@ -47,7 +46,7 @@ export default function Teklifler() {
     }
   };
 
-  const handleDownloadPDF = async (quote: any) => {
+  const handleDownloadPDF = async (quote: Quote) => {
     const doc = new jsPDF() as any;
 
     // 0. Load Font for Turkish Characters
@@ -158,21 +157,6 @@ export default function Teklifler() {
       }
     });
 
-    // 4. Pre-fetch item images
-    const imagePromises = quote.items.map(async (item: any) => {
-      const recipe = recipes.find(r => r.product_id === item.product_id);
-      if (recipe?.image_path) {
-        try {
-          const base64 = await getBase64ImageFromURL(`${UPLOAD_URL}/${recipe.image_path}`);
-          return { product_id: item.product_id, base64 };
-        } catch (e) {
-          return { product_id: item.product_id, base64: null };
-        }
-      }
-      return { product_id: item.product_id, base64: null };
-    });
-    const itemImages = await Promise.all(imagePromises);
-
     const getCurrencySymbol = (code: string) => {
       switch (code) {
         case "USD": return "$";
@@ -183,7 +167,7 @@ export default function Teklifler() {
     const cSym = getCurrencySymbol(quote.currency);
 
     // 5. Items Table
-    const tableData = quote.items.map((item: any, idx: number) => {
+    const tableData: any[] = (quote.items || []).map((item: QuoteItem, idx: number) => {
       return [
         idx + 1,
         item.product?.name || "-",
@@ -199,9 +183,10 @@ export default function Teklifler() {
     }
 
     // Add summary rows at the bottom of the table
+    const taxRate = quote.items && quote.items.length > 0 ? quote.items[0].tax_rate : 20;
     tableData.push(
         [{ content: "TOPLAM TUTAR", colSpan: 4, styles: { fontStyle: 'bold', halign: 'right' } }, `${quote.sub_total.toLocaleString('tr-TR')} ${cSym}`],
-        [{ content: `KDV %${quote.items[0]?.tax_rate || 20}`, colSpan: 4, styles: { fontStyle: 'bold', halign: 'right' } }, `${quote.tax_total.toLocaleString('tr-TR')} ${cSym}`],
+        [{ content: `KDV %${taxRate}`, colSpan: 4, styles: { fontStyle: 'bold', halign: 'right' } }, `${quote.tax_total.toLocaleString('tr-TR')} ${cSym}`],
         [{ content: "GENEL TOPLAM", colSpan: 4, styles: { fontStyle: 'bold', halign: 'right' } }, `${quote.total_price.toLocaleString('tr-TR')} ${cSym}`]
     );
 
@@ -248,16 +233,12 @@ export default function Teklifler() {
 
   const fetchData = async () => {
     try {
-      const [qRes, wRes, sRes, rRes] = await Promise.all([
+      const [qRes, wRes] = await Promise.all([
         axios.get(`${API_URL}/quotes`),
-        axios.get(`${API_URL}/warehouses`),
-        axios.get(`${API_URL}/settings`),
-        axios.get(`${API_URL}/recipes`)
+        axios.get(`${API_URL}/warehouses`)
       ]);
       setQuotes(qRes.data || []);
       setWarehouses(wRes.data || []);
-      setSettings(sRes.data || {});
-      setRecipes(rRes.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -304,7 +285,7 @@ export default function Teklifler() {
   };
 
   const toggleRow = (id: number) => {
-    setExpandedRows(prev => prev.includes(id) ? prev.filter(rid => rid !== id) : [...prev, id]);
+    setExpandedRows(prev => prev.includes(id) ? prev.filter((rid: number) => rid !== id) : [...prev, id]);
   };
 
   if (loading) return <div className="p-20 text-center animate-pulse font-black uppercase tracking-widest text-slate-400">Veriler Yükleniyor...</div>;
@@ -335,7 +316,7 @@ export default function Teklifler() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {quotes.map((q) => (
+            {quotes.map((q: Quote) => (
               <Card key={q.id} className="rounded-[2rem] border-none shadow-xl shadow-slate-200/50 overflow-hidden transition-all hover:shadow-2xl hover:shadow-slate-300/50 group">
                 <div className="p-6 md:p-8">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -432,8 +413,8 @@ export default function Teklifler() {
                           onChange={(e) => setSelectedWarehouse(e.target.value)}
                         >
                           <option value="">Çıkış Deposu Seç...</option>
-                          {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                        </select>
+                        {warehouses.map((w: Warehouse) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                      </select>
                         <Button 
                             variant="default" size="sm" 
                             onClick={() => handleConvertToSale(q.id)}
@@ -458,7 +439,7 @@ export default function Teklifler() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {q.items.map((item: any) => (
+                          {(q.items || []).map((item: QuoteItem) => (
                             <TableRow key={item.id} className="hover:bg-slate-100/50">
                               <TableCell className="font-bold text-slate-700">{item.product?.name}</TableCell>
                               <TableCell className="text-center font-bold">{item.quantity} {item.product?.unit}</TableCell>

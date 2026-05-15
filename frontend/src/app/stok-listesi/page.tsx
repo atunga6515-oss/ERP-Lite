@@ -7,12 +7,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Stock, Warehouse } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function StokListesi() {
-  const [stocks, setStocks] = useState<any[]>([]);
-  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [search, setSearch] = useState("");
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -44,7 +45,7 @@ export default function StokListesi() {
     setSortConfig({ key, direction });
   };
 
-  const filteredStocks = stocks.filter((s: any) => {
+  const filteredStocks = stocks.filter((s: Stock) => {
     const searchLower = search.toLocaleLowerCase('tr-TR');
     const matchesSearch = s.warehouse?.name?.toLocaleLowerCase('tr-TR').includes(searchLower) ||
       s.product?.name?.toLocaleLowerCase('tr-TR').includes(searchLower) ||
@@ -58,8 +59,8 @@ export default function StokListesi() {
 
   let sortedStocks = [...filteredStocks];
   if (sortConfig !== null) {
-    sortedStocks.sort((a, b) => {
-      let valA, valB;
+    sortedStocks.sort((a: Stock, b: Stock) => {
+      let valA: any, valB: any;
       switch (sortConfig.key) {
         case "warehouse": valA = a.warehouse?.name?.toLocaleLowerCase('tr-TR') || ""; valB = b.warehouse?.name?.toLocaleLowerCase('tr-TR') || ""; break;
         case "barcode": valA = a.product?.barcode?.toLocaleLowerCase('tr-TR') || ""; valB = b.product?.barcode?.toLocaleLowerCase('tr-TR') || ""; break;
@@ -99,7 +100,7 @@ export default function StokListesi() {
                 onChange={e => setSelectedWarehouseId(e.target.value)}
               >
                 <option value="all">Tüm Depolar</option>
-                {warehouses.map(w => (
+                {warehouses.map((w: Warehouse) => (
                   <option key={w.id} value={w.id}>{w.name}</option>
                 ))}
               </select>
@@ -140,7 +141,7 @@ export default function StokListesi() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedStocks.map((stock: any) => (
+                {sortedStocks.map((stock: Stock) => (
                   <TableRow key={`${stock.warehouse_id}-${stock.product_id}`}>
                     <TableCell className="font-medium text-blue-600">{stock.warehouse?.name}</TableCell>
                     <TableCell className="font-mono text-sm">{stock.product?.barcode}</TableCell>

@@ -8,18 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Truck, Plus, Edit2, Trash2, Mail, Phone, MapPin, UserCheck, UserPlus, FileSpreadsheet, Upload } from "lucide-react";
-import * as XLSX from "xlsx";
-import { format } from "date-fns";
+import { Truck, Plus, Edit2, Trash2, Mail, Phone, MapPin, UserCheck } from "lucide-react";
+import { Supplier } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function Tedarikciler() {
-  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Form State
-  const [editingSupplier, setEditingSupplier] = useState<any>(null);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     authorized_person: "",
@@ -52,7 +51,7 @@ export default function Tedarikciler() {
     }
     // Duplicate check for NEW suppliers
     if (!editingSupplier) {
-      const exists = suppliers.some(s => s.name?.toLocaleLowerCase('tr-TR') === formData.name.toLocaleLowerCase('tr-TR'));
+      const exists = suppliers.some((s: Supplier) => s.name?.toLocaleLowerCase('tr-TR') === formData.name.toLocaleLowerCase('tr-TR'));
       if (exists) {
         alert("Bu isimde bir tedarikçi zaten kayıtlı!");
         return;
@@ -73,7 +72,7 @@ export default function Tedarikciler() {
     }
   };
 
-  const handleEdit = (supplier: any) => {
+  const handleEdit = (supplier: Supplier) => {
     setEditingSupplier(supplier);
     setFormData({
       name: supplier.name || "",
@@ -199,7 +198,7 @@ export default function Tedarikciler() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {suppliers.map((s) => (
+                {suppliers.map((s: Supplier) => (
                   <TableRow key={s.id} className="hover:bg-slate-50/50">
                     <TableCell className="font-bold text-slate-900">
                       <div>{s.name}</div>

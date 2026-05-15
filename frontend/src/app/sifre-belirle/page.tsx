@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { KeyRound, ShieldCheck, AlertCircle, CheckCircle2 } from "lucide-react";
+import { KeyRound, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function SifreBelirle() {
   const searchParams = useSearchParams();

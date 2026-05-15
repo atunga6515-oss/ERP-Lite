@@ -8,18 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
   Plus, Trash2, Edit2, Building2, Phone, Mail, Globe, MapPin, 
-  Upload, X, CheckCircle, AlertCircle, Building, Image as ImageIcon
+  Upload, X, Building, Image as ImageIcon
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { IssuingCompany } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 const UPLOAD_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080` : "http://localhost:8080";
 
 export default function TeklifVerenSirketler() {
-  const [companies, setCompanies] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<IssuingCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingCompany, setEditingCompany] = useState<any>(null);
+  const [editingCompany, setEditingCompany] = useState<IssuingCompany | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -45,16 +45,16 @@ export default function TeklifVerenSirketler() {
     }
   };
 
-  const handleOpenModal = (company = null) => {
+  const handleOpenModal = (company: IssuingCompany | null = null) => {
     if (company) {
       setEditingCompany(company);
       setFormData({
-        name: (company as any).name,
-        address: (company as any).address,
-        phone: (company as any).phone,
-        email: (company as any).email,
-        web: (company as any).web,
-        logo_path: (company as any).logo_path
+        name: company.name,
+        address: company.address || "",
+        phone: company.phone || "",
+        email: company.email || "",
+        web: company.web || "",
+        logo_path: company.logo_path || ""
       });
     } else {
       setEditingCompany(null);
@@ -147,7 +147,7 @@ export default function TeklifVerenSirketler() {
             <h3 className="text-xl font-bold text-slate-400">Henüz şirket eklenmemiş.</h3>
           </div>
         ) : (
-          companies.map((company) => (
+          companies.map((company: IssuingCompany) => (
             <Card key={company.id} className="rounded-[2rem] border-none shadow-2xl shadow-slate-200/50 overflow-hidden group hover:scale-[1.02] transition-all duration-300">
               <CardHeader className="p-0 h-32 bg-slate-100 relative overflow-hidden flex items-center justify-center">
                 {company.logo_path ? (

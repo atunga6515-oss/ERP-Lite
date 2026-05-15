@@ -9,20 +9,21 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Hammer, Sparkles, Activity } from "lucide-react";
+import { Hammer, Sparkles, Activity, Search } from "lucide-react";
+import { Product, Warehouse, Stock, Recipe } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function Uretim() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [warehouses, setWarehouses] = useState<any[]>([]);
-  const [stocks, setStocks] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [stocks, setStocks] = useState<Stock[]>([]);
   
   // Production
   const [producedProductId, setProducedProductId] = useState("");
   const [producedQuantity, setProducedQuantity] = useState("");
   const [toWarehouseId, setToWarehouseId] = useState("");
-  const [activeRecipe, setActiveRecipe] = useState<any>(null);
+  const [activeRecipe, setActiveRecipe] = useState<Recipe | null>(null);
   
   // Consumption
   const [fromWarehouseId, setFromWarehouseId] = useState("");
@@ -58,7 +59,7 @@ export default function Uretim() {
   useEffect(() => {
     if (producedProductId) {
       axios.get(`${API_URL}/recipes/product/${producedProductId}`)
-        .then(res => setActiveRecipe(res.data))
+        .then((res: any) => setActiveRecipe(res.data))
         .catch(() => setActiveRecipe(null));
     } else {
       setActiveRecipe(null);
@@ -81,7 +82,7 @@ export default function Uretim() {
     // 1. First, determine the warehouse
     let targetFromWarehouse = fromWarehouseId;
     if (!targetFromWarehouse && warehouses.length > 0) {
-      const uretimDepo = warehouses.find(w => w.name?.toLocaleLowerCase('tr-TR').includes("üretim"));
+      const uretimDepo = warehouses.find((w: Warehouse) => w.name?.toLocaleLowerCase('tr-TR').includes("üretim"));
       if (uretimDepo) {
         targetFromWarehouse = String(uretimDepo.id);
         setFromWarehouseId(targetFromWarehouse);
@@ -130,7 +131,7 @@ export default function Uretim() {
       return;
     }
 
-    const consumed_items = selectedProductIds.map(id => ({
+    const consumed_items = selectedProductIds.map((id: string) => ({
       product_id: Number(id),
       quantity: selectedItems[Number(id)],
       from_warehouse_id: Number(fromWarehouseId)
@@ -161,14 +162,14 @@ export default function Uretim() {
     }
   };
 
-  let displayProducts: any[] = [];
+  let displayProducts: (Product & { currentStock: number })[] = [];
   if (fromWarehouseId) {
-    const warehouseStocks = stocks.filter(s => String(s.warehouse_id) === fromWarehouseId);
-    const warehouseProductIds = warehouseStocks.map(s => s.product_id);
+    const warehouseStocks = stocks.filter((s: Stock) => String(s.warehouse_id) === fromWarehouseId);
+    const warehouseProductIds = warehouseStocks.map((s: Stock) => s.product_id);
     const selectedProductIds = Object.keys(selectedItems).map(Number);
     
     displayProducts = products
-      .filter(p => {
+      .filter((p: Product) => {
         const isProduced = String(p.id) === producedProductId;
         if (isProduced) return false;
 
@@ -181,14 +182,14 @@ export default function Uretim() {
         // Otherwise show warehouse items + selected items
         return warehouseProductIds.includes(p.id) || selectedProductIds.includes(p.id);
       })
-      .map(p => {
-        const s = warehouseStocks.find(s => s.product_id === p.id);
+      .map((p: Product) => {
+        const s = warehouseStocks.find((s: Stock) => s.product_id === p.id);
         return { ...p, currentStock: s ? s.quantity : 0 };
       });
   }
 
   const filteredProducts = displayProducts
-    .sort((a, b) => {
+    .sort((a: Product & { currentStock: number }, b: Product & { currentStock: number }) => {
       const aSelected = selectedItems[a.id] !== undefined;
       const bSelected = selectedItems[b.id] !== undefined;
       if (aSelected && !bSelected) return -1;
@@ -226,7 +227,7 @@ export default function Uretim() {
                 >
                   <span className={producedProductId ? "text-slate-900 font-bold truncate" : "text-slate-400 truncate"}>
                     {producedProductId 
-                      ? products.find(p => String(p.id) === producedProductId)?.name || "Seçiniz..."
+                      ? products.find((p: Product) => String(p.id) === producedProductId)?.name || "Seçiniz..."
                       : "Ürün Seçiniz..."
                     }
                   </span>
@@ -247,11 +248,11 @@ export default function Uretim() {
                     </div>
                     <div className="max-h-[300px] overflow-y-auto custom-scrollbar bg-white">
                       {products
-                        .filter(p => 
+                        .filter((p: Product) => 
                           p.name.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR")) || 
                           p.barcode.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR"))
                         )
-                        .map(p => (
+                        .map((p: Product) => (
                           <div 
                             key={p.id}
                             className={`flex flex-col p-2 border-b border-slate-50 transition-all cursor-pointer group hover:bg-orange-50/50 ${
@@ -295,7 +296,7 @@ export default function Uretim() {
                 onChange={e => setToWarehouseId(e.target.value)}
               >
                 <option value="">Depo Seçiniz...</option>
-                {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                {warehouses.map((w: Warehouse) => <option key={w.id} value={w.id}>{w.name}</option>)}
               </select>
             </div>
 
@@ -344,7 +345,7 @@ export default function Uretim() {
                 onChange={e => setFromWarehouseId(e.target.value)}
               >
                 <option value="">Depo Seçiniz...</option>
-                {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                {warehouses.map((w: Warehouse) => <option key={w.id} value={w.id}>{w.name}</option>)}
               </select>
             </div>
 
@@ -367,7 +368,7 @@ export default function Uretim() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProducts.map(p => {
+                  {filteredProducts.map((p: Product & { currentStock: number }) => {
                     const isSelected = selectedItems[p.id] !== undefined;
                     return (
                       <TableRow key={p.id} className={isSelected ? "bg-blue-50" : ""}>

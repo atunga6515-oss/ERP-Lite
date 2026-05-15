@@ -9,24 +9,34 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Truck, Plus, Trash2, Package, CheckCircle, ShoppingBag, Search } from "lucide-react";
+import { Plus, Trash2, Package, CheckCircle, ShoppingBag, Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Product, Warehouse } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
+
+interface BasketItem {
+  product_id: number;
+  product_name?: string;
+  product_barcode?: string;
+  warehouse_id: number;
+  warehouse_name?: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
 
 export default function Satinalma() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [products, setProducts] = useState<any[]>([]);
-  const [warehouses, setWarehouses] = useState<any[]>([]);
-  const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [stocks, setStocks] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   
   // Purchase Form State
   const [note, setNote] = useState("");
   
   // Basket State
-  const [basket, setBasket] = useState<any[]>([]);
+  const [basket, setBasket] = useState<BasketItem[]>([]);
   
   // Current Item Selection State
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -45,16 +55,12 @@ export default function Satinalma() {
 
   const fetchData = async () => {
     try {
-      const [pRes, wRes, cRes, sRes] = await Promise.all([
+      const [pRes, wRes] = await Promise.all([
         axios.get(`${API_URL}/products`),
-        axios.get(`${API_URL}/warehouses`),
-        axios.get(`${API_URL}/suppliers`),
-        axios.get(`${API_URL}/stocks`)
+        axios.get(`${API_URL}/warehouses`)
       ]);
       setProducts(pRes.data || []);
       setWarehouses(wRes.data || []);
-      setSuppliers(cRes.data || []);
-      setStocks(sRes.data || []);
     } catch (err) {
       console.error(err);
     }
@@ -70,9 +76,9 @@ export default function Satinalma() {
     if (itemsParam && products.length > 0 && warehouses.length > 0) {
       try {
         const parsedItems = JSON.parse(itemsParam);
-        const newBasketItems = parsedItems.map((item: any) => {
-          const product = products.find(p => p.id === item.id);
-          const warehouse = warehouses.find(w => w.id === item.warehouse_id);
+        const newBasketItems = parsedItems.map((item: {id: number, warehouse_id: number, quantity: number}) => {
+          const product = products.find((p: Product) => p.id === item.id);
+          const warehouse = warehouses.find((w: Warehouse) => w.id === item.warehouse_id);
           
           return {
             product_id: item.id,
@@ -103,10 +109,10 @@ export default function Satinalma() {
       return;
     }
 
-    const product = products.find(p => String(p.id) === selectedProductId);
-    const warehouse = warehouses.find(w => String(w.id) === selectedWarehouseId);
+    const product = products.find((p: Product) => String(p.id) === selectedProductId);
+    const warehouse = warehouses.find((w: Warehouse) => String(w.id) === selectedWarehouseId);
     
-    const newItem = {
+    const newItem: BasketItem = {
       product_id: Number(selectedProductId),
       product_name: product?.name,
       product_barcode: product?.barcode,
@@ -149,7 +155,7 @@ export default function Satinalma() {
     }
 
     const payload = {
-      items: basket.map(item => ({
+      items: basket.map((item: BasketItem) => ({
         product_id: item.product_id,
         warehouse_id: item.warehouse_id,
         quantity: item.quantity,
@@ -174,7 +180,7 @@ export default function Satinalma() {
     }
   };
 
-  const totalBasketAmount = basket.reduce((sum, item) => sum + item.total_price, 0);
+  const totalBasketAmount = basket.reduce((sum: number, item: BasketItem) => sum + item.total_price, 0);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20">
@@ -250,7 +256,7 @@ export default function Satinalma() {
                   >
                     <span className={selectedProductId ? "text-slate-900 font-bold" : "text-slate-400 truncate"}>
                       {selectedProductId 
-                        ? products.find(p => String(p.id) === selectedProductId)?.name || "Seçiniz..."
+                        ? products.find((p: Product) => String(p.id) === selectedProductId)?.name || "Seçiniz..."
                         : "Ürün Seçiniz..."
                       }
                     </span>
@@ -271,11 +277,11 @@ export default function Satinalma() {
                       </div>
                       <div className="max-h-[400px] overflow-y-auto custom-scrollbar bg-white">
                         {products
-                          .filter(p => 
+                          .filter((p: Product) => 
                             p.name.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR")) || 
                             p.barcode.toLocaleLowerCase("tr-TR").includes(searchTerm.toLocaleLowerCase("tr-TR"))
                           )
-                          .map(p => (
+                          .map((p: Product) => (
                             <div 
                               key={p.id}
                               className={`flex items-center justify-between p-3 border-b border-slate-50 transition-all cursor-pointer group hover:bg-orange-50/50 ${
@@ -325,7 +331,7 @@ export default function Satinalma() {
                     onChange={e => setSelectedWarehouseId(e.target.value)}
                   >
                     <option value="">Depo...</option>
-                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    {warehouses.map((w: Warehouse) => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
                 </div>
 
@@ -379,7 +385,7 @@ export default function Satinalma() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {basket.map((item, idx) => (
+                  {basket.map((item: BasketItem, idx: number) => (
                     <TableRow key={idx}>
                       <TableCell>
                         <p className="font-bold">{item.product_name}</p>

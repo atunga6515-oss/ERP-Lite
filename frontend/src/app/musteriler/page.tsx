@@ -8,18 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, Plus, Edit2, Trash2, Mail, Phone, MapPin, FileText, UserCheck, UserPlus, FileSpreadsheet, Upload } from "lucide-react";
+import { Users, Edit2, Trash2, Mail, Phone, MapPin, UserCheck, UserPlus, FileSpreadsheet, Upload } from "lucide-react";
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
+import { Customer } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function Musteriler() {
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Form State
-  const [editingCustomer, setEditingCustomer] = useState<any>(null);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     authorized_person: "",
@@ -55,7 +56,7 @@ export default function Musteriler() {
 
     // Duplicate check for NEW customers
     if (!editingCustomer) {
-      const exists = customers.some(c => c.name?.toLocaleLowerCase('tr-TR') === formData.name.toLocaleLowerCase('tr-TR'));
+      const exists = customers.some((c: Customer) => c.name?.toLocaleLowerCase('tr-TR') === formData.name.toLocaleLowerCase('tr-TR'));
       if (exists) {
         alert("Bu isimde bir müşteri zaten kayıtlı!");
         return;
@@ -77,7 +78,7 @@ export default function Musteriler() {
     }
   };
 
-  const handleEdit = (customer: any) => {
+  const handleEdit = (customer: Customer) => {
     setEditingCustomer(customer);
     setFormData({
       name: customer.name || "",
@@ -106,7 +107,7 @@ export default function Musteriler() {
   };
 
   const exportToExcel = () => {
-    const data = customers.map(c => ({
+    const data = customers.map((c: Customer) => ({
       "Firma Adı": c.name,
       "Yetkili Kişi": c.authorized_person || "",
       "İlgili Kişi": c.contact_person || "",
@@ -297,7 +298,7 @@ export default function Musteriler() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {customers.map((c) => (
+                {customers.map((c: Customer) => (
                   <TableRow key={c.id} className="hover:bg-slate-50/50">
                     <TableCell className="font-bold text-slate-900">
                       <div>{c.name}</div>

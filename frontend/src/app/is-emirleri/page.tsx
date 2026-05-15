@@ -12,12 +12,13 @@ import { tr } from "date-fns/locale";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { WorkOrder } from "@/types";
 
 const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
 
 export default function IsEmirleri() {
-  const [workOrders, setWorkOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
   const [requirements, setRequirements] = useState<Record<number, any[]>>({});
@@ -26,7 +27,7 @@ export default function IsEmirleri() {
   const fetchWorkOrders = async () => {
     try {
       const res = await axios.get(`${API_URL}/work-orders`);
-      const sortedData = (res.data || []).sort((a: any, b: any) => b.id - a.id);
+      const sortedData = (res.data || []).sort((a: WorkOrder, b: WorkOrder) => (b.id || 0) - (a.id || 0));
       setWorkOrders(sortedData);
     } catch (err) {
       console.error(err);
@@ -98,7 +99,7 @@ export default function IsEmirleri() {
     }
   };
 
-  const formatWithTime = (dateStr: string | null) => {
+  const formatWithTime = (dateStr: string | null | undefined) => {
     if (!dateStr) return "-";
     return format(new Date(dateStr), 'dd MMM yyyy HH:mm', { locale: tr });
   };
@@ -127,7 +128,7 @@ export default function IsEmirleri() {
             { id: "Üretimde", label: "Üretimde Olanlar", color: "text-purple-600" },
             { id: "Tamamlandı", label: "Tamamlananlar", color: "text-green-600" },
             { id: "İptal", label: "İptal Edilenler", color: "text-red-600" },
-          ].map((status) => (
+          ].map((status: { id: string; label: string; color: string }) => (
             <div key={status.id} className="flex items-center space-x-2">
               <Checkbox 
                 id={`filter-${status.id}`} 
@@ -148,7 +149,7 @@ export default function IsEmirleri() {
           ))}
         </div>
         <div className="ml-auto text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-          {workOrders.filter(wo => filters.includes(wo.status)).length} KAYIT LİSTELENİYOR
+          {workOrders.filter((wo: WorkOrder) => filters.includes(wo.status)).length} KAYIT LİSTELENİYOR
         </div>
       </div>
 
@@ -171,7 +172,7 @@ export default function IsEmirleri() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {workOrders.filter(wo => filters.includes(wo.status)).map((wo) => (
+              {workOrders.filter((wo: WorkOrder) => filters.includes(wo.status)).map((wo: WorkOrder) => (
                 <Fragment key={wo.id}>
                   <TableRow className={`hover:bg-slate-50 transition-colors ${expandedRows.includes(wo.id) ? 'bg-slate-50' : ''}`}>
                     <TableCell>
@@ -294,7 +295,7 @@ export default function IsEmirleri() {
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {requirements[wo.id]?.map((req, idx) => (
+                                  {requirements[wo.id]?.map((req: any, idx: number) => (
                                     <TableRow key={idx} className={req.status === 'SHORT' ? 'bg-red-50' : ''}>
                                       <TableCell className="text-xs font-medium">{req.product_name}</TableCell>
                                       <TableCell className="text-xs text-right font-bold">{req.required}</TableCell>
@@ -318,7 +319,7 @@ export default function IsEmirleri() {
                                 </TableBody>
                               </Table>
                             </div>
-                            {requirements[wo.id]?.some(r => r.status === 'SHORT') && (
+                            {requirements[wo.id]?.some((r: any) => r.status === 'SHORT') && (
                               <div className="bg-red-50 border border-red-100 p-3 rounded flex items-center gap-3">
                                 <AlertCircle className="text-red-500 w-5 h-5 shrink-0" />
                                 <div className="text-[11px] text-red-800 leading-tight">
@@ -330,8 +331,8 @@ export default function IsEmirleri() {
                                     query: { 
                                       items: JSON.stringify(
                                         requirements[wo.id]
-                                          ?.filter(r => r.status === 'SHORT')
-                                          .map(r => ({
+                                          ?.filter((r: any) => r.status === 'SHORT')
+                                          .map((r: any) => ({
                                             id: r.product_id,
                                             quantity: r.required - r.in_stock,
                                             warehouse_id: wo.source_warehouse_id

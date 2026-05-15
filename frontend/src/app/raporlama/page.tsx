@@ -61,11 +61,11 @@ export default function Raporlama() {
   }, []);
 
   // Filter Logics
-  const filteredStocks = stocks.filter(s => 
+  const filteredStocks = stocks.filter((s: any) => 
     stockWarehouseFilter === "all" || String(s.warehouse_id) === stockWarehouseFilter
   );
 
-  const filteredMovements = movements.filter(m => {
+  const filteredMovements = movements.filter((m: any) => {
     let isValid = true;
     
     // Type filter
@@ -103,7 +103,7 @@ export default function Raporlama() {
   });
 
   const exportStocksToExcel = () => {
-    const data = filteredStocks.map(s => ({
+    const data = filteredStocks.map((s: any) => ({
       "Depo Adı": s.warehouse?.name || "-",
       "Barkod": s.product?.barcode || "-",
       "Ürün Adı": s.product?.name || "-",
@@ -120,7 +120,7 @@ export default function Raporlama() {
   };
 
   const exportMovementsToExcel = () => {
-    const data = filteredMovements.map(m => ({
+    const data = filteredMovements.map((m: any) => ({
       "Tarih": m.timestamp ? format(new Date(m.timestamp), 'dd MMM yyyy HH:mm', { locale: tr }) : "-",
       "İşlem Türü": m.type,
       "Barkod": m.product?.barcode || "-",
@@ -214,7 +214,7 @@ export default function Raporlama() {
                   value={movWarehouse} onChange={e => setMovWarehouse(e.target.value)}
                 >
                   <option value="all">Tüm Depolar</option>
-                  {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                  {warehouses.map((w: any) => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
               </div>
               <div className="space-y-2">
@@ -224,7 +224,7 @@ export default function Raporlama() {
                   value={movCustomer} onChange={e => setMovCustomer(e.target.value)}
                 >
                   <option value="all">Tüm Müşteriler</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {customers.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
             </div>
@@ -245,7 +245,7 @@ export default function Raporlama() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredMovements.map(m => (
+                  {filteredMovements.map((m: any) => (
                     <TableRow key={m.id} className="hover:bg-blue-50/50">
                       <TableCell className="whitespace-nowrap font-mono text-xs">
                         {m.timestamp ? format(new Date(m.timestamp), 'dd MMM yyyy HH:mm', { locale: tr }) : "-"}
@@ -322,7 +322,7 @@ export default function Raporlama() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStocks.map((s, idx) => (
+                  {filteredStocks.map((s: any, idx: number) => (
                     <TableRow key={idx} className="hover:bg-blue-50/50">
                       <TableCell className="font-semibold text-slate-700">{s.warehouse?.name}</TableCell>
                       <TableCell className="font-mono text-xs">{s.product?.barcode}</TableCell>
@@ -368,7 +368,7 @@ export default function Raporlama() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {purchases.map(p => (
+                  {purchases.map((p: any) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-mono font-bold">#{p.id}</TableCell>
                       <TableCell className="font-bold">{p.supplier?.name}</TableCell>
