@@ -404,7 +404,7 @@ export default function AdminPage() {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Sistem Yönetim Merkezi</h1>
-        <p className="text-slate-500 mt-1">v1.3.0 Güvenlik ve Altyapı Ayarları</p>
+        <p className="text-slate-500 mt-1">v1.3.1 Güvenlik ve Altyapı Ayarları</p>
       </div>
 
       <Tabs defaultValue="users" className="space-y-4">

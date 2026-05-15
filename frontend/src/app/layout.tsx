@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ERP Lite v1.3.0",
+  title: "ERP Lite v1.3.1",
   description: "Akıllı Fabrika ve Güvenlik Sistemi",
 };
 

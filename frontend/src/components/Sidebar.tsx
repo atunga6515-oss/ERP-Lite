@@ -201,7 +201,7 @@ export function Sidebar() {
         )}
         <div className="mt-2 px-3 flex justify-between items-center opacity-40">
           <span className="text-[9px] font-black tracking-[0.2em]">ERP LITE</span>
-          <span className="text-[9px] font-bold">v1.3.0</span>
+          <span className="text-[9px] font-bold">v1.3.1</span>
         </div>
       </div>
 
