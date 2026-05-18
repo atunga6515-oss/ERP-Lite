@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ShoppingCart, Plus, Trash2, Package, CheckCircle, Search, Clock, AlertTriangle } from "lucide-react";
 import { Product, Warehouse, Customer, Stock, Sale, SaleItem } from "@/types";
 
-const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}/api` : "http://localhost:8080/api");
 
 interface BasketItem {
   product_id: number;

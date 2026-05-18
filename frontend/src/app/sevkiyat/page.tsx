@@ -9,7 +9,7 @@ import { Truck, Package, CheckCircle, RefreshCw, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Sale, SaleItem } from "@/types";
 
-const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}/api` : "http://localhost:8080/api");
 
 export default function SevkiyatMasasi() {
   const [pendingSales, setPendingSales] = useState<Sale[]>([]);

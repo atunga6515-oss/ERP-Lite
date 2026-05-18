@@ -27,7 +27,7 @@ export function Sidebar() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const baseURL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
+        const baseURL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}/api` : "http://localhost:8080/api");
         const res = await axios.get(`${baseURL}/settings`);
         if (res.data["company_name"]) setCompanyName(res.data["company_name"]);
         if (res.data["company_logo"]) setLogoUrl(res.data["company_logo"]);

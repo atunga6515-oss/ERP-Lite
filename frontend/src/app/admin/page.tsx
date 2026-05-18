@@ -29,7 +29,7 @@ interface NotificationRule {
   is_active: boolean;
 }
 
-const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}/api` : "http://localhost:8080/api");
 
 const MENU_STRUCTURE = [
   {

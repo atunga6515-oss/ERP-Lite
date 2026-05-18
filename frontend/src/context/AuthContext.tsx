@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
 
     // Fetch session timeout setting
-    const baseURL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
+    const baseURL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}/api` : "http://localhost:8080/api");
     axios.get(`${baseURL}/settings`).then(res => {
       if (res.data.session_timeout) {
         setTimeoutMinutes(Number(res.data.session_timeout));

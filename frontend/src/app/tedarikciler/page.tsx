@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Truck, Plus, Edit2, Trash2, Mail, Phone, MapPin, UserCheck } from "lucide-react";
 import { Supplier } from "@/types";
 
-const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}/api` : "http://localhost:8080/api");
 
 export default function Tedarikciler() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);

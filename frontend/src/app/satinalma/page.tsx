@@ -13,7 +13,7 @@ import { Plus, Trash2, Package, CheckCircle, ShoppingBag, Search } from "lucide-
 import { useRouter, useSearchParams } from "next/navigation";
 import { Product, Warehouse } from "@/types";
 
-const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}/api` : "http://localhost:8080/api");
 
 interface BasketItem {
   product_id: number;

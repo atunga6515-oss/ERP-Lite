@@ -12,7 +12,7 @@ import { Search, Plus, Trash2, BookOpen, CheckCircle, Info, Upload } from "lucid
 import { Badge } from "@/components/ui/badge";
 import { Product, Recipe, Stock } from "@/types";
 
-const API_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080/api` : "http://localhost:8080/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}/api` : "http://localhost:8080/api");
 const UPLOAD_URL = typeof window !== "undefined" ? `http://${window.location.hostname}:8080` : "http://localhost:8080";
 
 interface RecipeFormItem {
